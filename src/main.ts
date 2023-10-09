@@ -10,7 +10,7 @@ async function bootstrap() {
 
   // Call the method from the service
   await usersService.cypher();
-  await app.listen(process.env.PORT || 8000);
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();
 

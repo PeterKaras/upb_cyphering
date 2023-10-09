@@ -16,6 +16,7 @@ config();
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
       ssl: process.env.NODE_ENV == 'production',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
       autoLoadEntities: true, // models will be loaded automatically (you don't have to explicitly specify the entities: [] array)
       synchronize: true, // your entities will be synced with the database (ORM will map entities definitions to corresponding SQL tabled), every time you run the application (recommended: disable in the production)
     }),

@@ -1,25 +1,21 @@
-# Use an official Node.js runtime as a parent image
-FROM node:14
+FROM node:16
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json to the container
-COPY package*.json ./
-
-# Install Nest.js CLI globally
-RUN npm install -g @nestjs/cli
-
-# Install application dependencies
+COPY package.json .
+COPY package-lock.json .
 RUN npm install
-RUN npm i bcrypt
-RUN npm i crypto
 
-# Copy the rest of the application code to the container
+# Copy the installation script into the container
+COPY install_dependencies.sh /app/install_dependencies.sh
+
+# Make the script executable
+RUN chmod +x /app/install_dependencies.sh
+
+# Run the script to install dependencies
+RUN /app/install_dependencies.sh
+
+# Copy your application code
 COPY . .
 
-# Expose the port on which your backend server will run (if different from the Docker Compose port)
-EXPOSE 8000
-
-# Define the command to run your script (modify as needed)
 CMD ["npm", "start"]
