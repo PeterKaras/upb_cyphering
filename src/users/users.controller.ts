@@ -12,7 +12,7 @@ export class UsersController {
 
 
   @Get('cypher')
-  async cypher(): Promise<User[]> {
+  async cypher(): Promise<any> {
     return await this.usersService.cypher();
   }
 }
