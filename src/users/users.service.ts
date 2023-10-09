@@ -25,7 +25,7 @@ export class UsersService {
 
       // Encrypting the data
       const cipher = crypto.createCipheriv(algorithm, symmetricKey, iv);
-      let encryptedData = cipher.update(dataToEncrypt, 'utf8', 'hex');
+      let encryptedData: string = cipher.update(dataToEncrypt, 'utf8', 'hex');
       encryptedData += cipher.final('hex');
 
       return {
@@ -35,6 +35,14 @@ export class UsersService {
     });
   }
 
+  async create(user: any): Promise<User> {
+    return await this.usersRepository.save({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      text: user.text,
+    });
+  }
+  
   private generateSymmetricKey = () => {
     return crypto.randomBytes(32); // 32 bytový kľúč (256 bitov)
   };
