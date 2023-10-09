@@ -1,6 +1,19 @@
 version: '3.8'
 
 services:
+  backend:
+    build: ./
+    ports:
+      - '8000:8000'
+    environment:
+      - DB_HOST=db
+      - DB_NAME=postgres
+      - DB_USER=postgres
+      - DB_PASS=pass123
+    depends_on:
+      - db
+    volumes:
+      - .:/app
   db:
     image: postgres
     restart: always
@@ -8,3 +21,11 @@ services:
       - '5432:5432'
     environment:
       POSTGRES_PASSWORD: pass123
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data:

@@ -10,16 +10,8 @@ export class UsersService {
   ) {
   }
 
-
-  async cypher() {
-    const userDto = {
-      firstName: 'John',
-      lastName: 'Doe',
-      text: 'Hello World!'
-    }
-    const createdUser = this.usersRepository.create(userDto);
-    await this.usersRepository.save(createdUser);
-    console.log(createdUser);
-    return 'Hello World!';
+  async cypher(): Promise<User[]> {
+    const users: User[] = await this.usersRepository.find();
+    return users;
   }
 }
