@@ -17,14 +17,13 @@ export class UsersService {
   }
 
   private readonly modulusLength = 2048; // Key size
-  private symmetricKey = crypto.randomBytes(32); // Generovanie symetrického kľúča
 
   encryptDataWithSymmetricKey(data: string, symmetricKey: Buffer): string {
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv(this.algorithm, symmetricKey, iv);
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted; // Ukladanie IV spolu s šifrovanými dátami
+    return iv.toString('hex') + ':' + encrypted;
   }
 
   decryptDataWithSymmetricKey(encryptedData: string, symmetricKey: Buffer): string {
@@ -33,17 +32,16 @@ export class UsersService {
     const encryptedText = Buffer.from(parts.join(':'), 'hex');
     const decipher = crypto.createDecipheriv(this.algorithm, symmetricKey, iv);
     let decrypted = decipher.update(encryptedText.toString('hex'), 'hex', 'utf8');
-
     decrypted += decipher.final('utf8');
     return decrypted;
   }
 
-  encryptSymmetricKeyWithPublicKey(publicKey: string, symmetricKey: Buffer): string {
-    return crypto.publicEncrypt(publicKey, symmetricKey).toString('base64');
+  encryptSymmetricKeyWithPrivateKey(privateKey: string, symmetricKey: Buffer): string {
+    return crypto.privateEncrypt(privateKey, symmetricKey).toString('base64');
   }
 
-  decryptSymmetricKeyWithPrivateKey(encryptedKey: string, privateKey: string): Buffer {
-    return crypto.privateDecrypt(privateKey, Buffer.from(encryptedKey, 'base64'));
+  decryptSymmetricKeyWithPublicKey(encryptedKey: string, publicKey: string): Buffer {
+    return crypto.publicDecrypt(publicKey, Buffer.from(encryptedKey, 'base64'));
   }
 
   generateKeyPair(): { publicKey: string; privateKey: string } {
@@ -63,35 +61,25 @@ export class UsersService {
 
   async cypher(): Promise<Awaited<string>[]> {
     const users: User[] = await this.usersRepository.find();
-
     return Promise.all(users.map((user) => {
       const dataToEncrypt = `${user.firstName} ${user.lastName} ${user.text}`;
       const symmetricKey = crypto.randomBytes(32);
-
       const encryptedData = this.encryptDataWithSymmetricKey(dataToEncrypt, symmetricKey);
       const { publicKey, privateKey } = this.generateKeyPair();
-      const encryptedSymmetricKey = this.encryptSymmetricKeyWithPublicKey(publicKey, symmetricKey);
-
-      // Dešifrovanie symetrického kľúča s privátnym kľúčom
-      const decryptedSymmetricKey = this.decryptSymmetricKeyWithPrivateKey(encryptedSymmetricKey, privateKey);
-
-      // Overenie, či dešifrovaný symetrický kľúč je rovnaký ako pôvodný
+      const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(privateKey, symmetricKey);
+      const decryptedSymmetricKey = this.decryptSymmetricKeyWithPublicKey(encryptedSymmetricKey, publicKey);
       if (decryptedSymmetricKey.toString() !== symmetricKey.toString()) {
         throw new Error('Symmetric key decryption failed!');
       }
-
-      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, symmetricKey);
-
-      // Overenie integrity dát
+      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, decryptedSymmetricKey);
       if (decryptedData !== dataToEncrypt) {
         throw new Error('Data integrity verification failed!');
       }
-      console.log('Original: ', dataToEncrypt);
-      console.log('Encrypted: ', encryptedData);
-      console.log('Decrypted: ', decryptedData);
-      console.log('Decrypted symmetric key: ', decryptedSymmetricKey.toString());
-      console.log('Original symmetric key: ', symmetricKey.toString());
-      console.log("--------------------------------------------------------------")
+
+      console.log(`Original: ${dataToEncrypt}, Encrypted: ${encryptedData}, Decrypted: ${decryptedData}`);
+      console.log(`Symmetric key: ${symmetricKey.toString('hex')}`);
+      console.log(`Encrypted symmetric key: ${encryptedSymmetricKey}`);
+
       return `Original: ${dataToEncrypt}, Encrypted: ${encryptedData}, Decrypted: ${decryptedData}`;
     }));
   }
