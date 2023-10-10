@@ -20,34 +20,32 @@ export class UsersService {
   private readonly algorithm = 'aes-256-cbc';
   private readonly keyLength = 32;
   private readonly ivLength = 16;
-  private readonly salt = randomBytes(16);
   private readonly iterations = 10000;
 
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>
   ) {}
 
-  private deriveKey(password: string): Buffer {
-    return crypto.pbkdf2Sync(password, this.salt, this.iterations, this.keyLength, 'sha512');
+  private deriveKey(password: string, salt: string): Buffer {
+    return crypto.pbkdf2Sync(password, salt, this.iterations, this.keyLength, 'sha512');
   }
 
-  private encrypt(data: string, password: string) {
-    const key = this.deriveKey(password);
+  private encrypt(data: string, password: string, salt: string) {
+    const key = this.deriveKey(password, salt);
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv(this.algorithm, key, iv);
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     return {
       iv: iv.toString('hex'),
-
       encryptedData: encrypted
     };
   }
 
-  private decrypt(encryptedKey: string, iv: string, encrypted_key_data: any) {
-    const password_data = this.decrypt_key(encrypted_key_data.content, encrypted_key_data.iv);
+  private decrypt(encryptedKey: string, iv: string, encrypted_key_data: any, salt: string) {
+    const password_data = this.decrypt_key(encrypted_key_data.content, encrypted_key_data.iv, salt);
 
-    const key = this.deriveKey(password_data);
+    const key = this.deriveKey(password_data, salt);
     const decipher = crypto.createDecipheriv(this.algorithm, key, Buffer.from(iv, 'hex'));
     let decrypted = decipher.update(encryptedKey, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
@@ -71,20 +69,19 @@ export class UsersService {
     return { publicKey, privateKey };
   }
 
-  encrypt_key(data: string): { iv: string; content: string } {
-
-    const key = scryptSync(this.password, this.salt, this.keyLength);
+  encrypt_key(data: string, salt: string): { iv: string; content: string } {
+    const key = scryptSync(this.password, salt, this.keyLength);
     const iv = randomBytes(this.ivLength);
 
     const cipher = createCipheriv(this.algorithm, key, iv);
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
 
-    return { iv: iv.toString('hex'), content: encrypted };
+    return {iv: iv.toString('hex'), content: encrypted };
   }
 
-  decrypt_key(encryptedData: string, iv: string): string {
-    const key = scryptSync(this.password, this.salt, this.keyLength);
+  decrypt_key(encryptedData: string, iv: string, salt: string): string {
+    const key = scryptSync(this.password, salt, this.keyLength);
 
     const decipher = createDecipheriv(this.algorithm, key, Buffer.from(iv, 'hex'));
     let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
@@ -93,26 +90,26 @@ export class UsersService {
     return decrypted;
   }
 
-  async cypher(): Promise<{ salt: Buffer; iv: string; encryptedKey: string; content: string }[]> {
+  async cypher(): Promise<{ iv: string; encryptedKey: string; content: string }[]> {
     const users: User[] = await this.usersRepository.find();
 
     return Promise.all(users.map((user) => {
       const dataToEncrypt = `${user.firstName} ${user.lastName} ${user.text}`;
+      const salt = randomBytes(16);
 
       //Encrypting data
-      const encrypted_data = this.encrypt(dataToEncrypt, user.publicKey);
+      const encrypted_data = this.encrypt(dataToEncrypt, user.publicKey, salt.toString('hex'));
       console.log("Encrypted_data:",encrypted_data);
 
       //Encrypting key
-      const encrypted_key_data = this.encrypt_key(user.publicKey);
+      const encrypted_key_data = this.encrypt_key(user.publicKey, salt.toString('hex'));
       console.log("Encrypted_key_data:",encrypted_key_data);
 
       //Decrypting data
-      const decrypted_data = this.decrypt(encrypted_data.encryptedData, encrypted_data.iv, encrypted_key_data);
+      const decrypted_data = this.decrypt(encrypted_data.encryptedData, encrypted_data.iv, encrypted_key_data, salt.toString('hex'));
       console.log("Decrypted_data:",decrypted_data);
 
       return {
-        salt: this.salt,
         iv: encrypted_data.iv,
         encryptedKey: encrypted_data.encryptedData,
         content: decrypted_data
