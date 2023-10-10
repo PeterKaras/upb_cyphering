@@ -102,8 +102,11 @@ export class UsersService {
       //Encrypting data
       const encrypted_data = this.encrypt(dataToEncrypt, user.publicKey);
       console.log("Encrypted_data:",encrypted_data);
+
+      //Encrypting key
       const encrypted_key_data = this.encrypt_key(user.publicKey);
       console.log("Encrypted_key_data:",encrypted_key_data);
+
       //Decrypting data
       const decrypted_data = this.decrypt(encrypted_data.encryptedData, encrypted_data.iv, encrypted_key_data);
       console.log("Decrypted_data:",decrypted_data);
