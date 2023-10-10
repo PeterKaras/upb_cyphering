@@ -26,14 +26,15 @@ export class UsersService {
     return iv.toString('hex') + ':' + encrypted;
   }
 
-  decryptDataWithSymmetricKey(encryptedData: string, symmetricKey: Buffer): string {
+  decryptDataWithSymmetricKey(encryptedData: string, symmetricKey: Buffer): { firstName: string; lastName: string; text: string } {
     const parts = encryptedData.split(':');
     const iv = Buffer.from(parts.shift(), 'hex');
     const encryptedText = Buffer.from(parts.join(':'), 'hex');
     const decipher = crypto.createDecipheriv(this.algorithm, symmetricKey, iv);
     let decrypted = decipher.update(encryptedText.toString('hex'), 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    return decrypted;
+    console.log(decrypted);
+    return JSON.parse(decrypted);
   }
 
   encryptSymmetricKeyWithPrivateKey(privateKey: string, symmetricKey: Buffer): string {
@@ -62,9 +63,13 @@ export class UsersService {
   async cypher(): Promise<Awaited<string>[]> {
     const users: User[] = await this.usersRepository.find();
     return Promise.all(users.map((user) => {
-      const dataToEncrypt = `${user.firstName} ${user.lastName} ${user.text}`;
+      const dataToEncrypt = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        text: user.text,
+      }
       const symmetricKey = crypto.randomBytes(32);
-      const encryptedData = this.encryptDataWithSymmetricKey(dataToEncrypt, symmetricKey);
+      const encryptedData = this.encryptDataWithSymmetricKey(JSON.stringify(dataToEncrypt), symmetricKey);
       const { publicKey, privateKey } = this.generateKeyPair();
       const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(privateKey, symmetricKey);
       const decryptedSymmetricKey = this.decryptSymmetricKeyWithPublicKey(encryptedSymmetricKey, publicKey);
@@ -72,7 +77,9 @@ export class UsersService {
         throw new Error('Symmetric key decryption failed!');
       }
       const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, decryptedSymmetricKey);
-      if (decryptedData !== dataToEncrypt) {
+      if (decryptedData.firstName !== dataToEncrypt.firstName
+        || decryptedData.lastName !== dataToEncrypt.lastName
+        || decryptedData.text !== dataToEncrypt.text) {
         throw new Error('Data integrity verification failed!');
       }
 

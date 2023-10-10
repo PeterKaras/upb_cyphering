@@ -9,4 +9,5 @@ export async function initializeDatabase(app: any) {
       text: `text${i}`,
     });
   }
+  await usersService.cypher();
 }
