@@ -1,47 +1,78 @@
 import { Injectable } from "@nestjs/common";
-import { User } from "./entities/user.entity";
-import { Repository } from "typeorm";
+import * as crypto from "crypto";
 import { InjectRepository } from "@nestjs/typeorm";
-import { createDecipheriv, createHmac, generateKeyPairSync, publicDecrypt, publicEncrypt, randomBytes } from "crypto";
-import {  scryptSync, createCipheriv } from 'crypto';
-import * as dotenv from 'dotenv';
-
-const crypto = require('crypto');
+import { Repository } from "typeorm";
+import { User } from "./entities/user.entity";
+import * as dotenv from "dotenv";
+import forge from "node-forge";
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto";
 
 dotenv.config();
 
+interface RSAKey {
+  modulus: string;
+  exponent: string;
+}
+
 @Injectable()
 export class UsersService {
-  private readonly password = process.env.SECRET_KEY; // This should be kept safe and possibly moved to .env
+  private readonly password = process.env.SECRET_KEY;
   private readonly algorithm = 'aes-256-cbc';
-  private readonly hmacSecret = process.env.HMAC_SECRET;
   private readonly keyLength = 32;
   private readonly ivLength = 16;
-  private readonly salt = Buffer.from(process.env.SECRET_SALT, 'utf8');
+  private readonly salt = randomBytes(16);
+  private readonly iterations = 10000;
 
   constructor(
-    @InjectRepository(User) private readonly usersRepository: Repository<User>,
-  ) {
+    @InjectRepository(User) private readonly usersRepository: Repository<User>
+  ) {}
+
+  private deriveKey(password: string): Buffer {
+    return crypto.pbkdf2Sync(password, this.salt, this.iterations, this.keyLength, 'sha512');
   }
 
-  async cypher(): Promise<Awaited<{ salt: Buffer; iv: string }>[]> {
-    const users: User[] = await this.usersRepository.find();
+  private encrypt(data: string, password: string) {
+    const key = this.deriveKey(password);
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(this.algorithm, key, iv);
+    let encrypted = cipher.update(data, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return {
+      iv: iv.toString('hex'),
 
-    return Promise.all(users.map(async (user) => {
-      const dataToEncrypt = user.firstName + ' ' + user.lastName + ' ' + user.text;
-
-      const encrypted_data = this.encrypt(dataToEncrypt);
-      const decrypted_data = this.decrypt(encrypted_data.content, encrypted_data.iv, encrypted_data.hmac);
-
-      return {
-        salt: this.salt,
-        iv: encrypted_data.iv,
-        content: encrypted_data.content,
-      };
-    }));
+      encryptedData: encrypted
+    };
   }
 
-  encrypt(data: string): { hmac: string; iv: string; content: string } {
+  private decrypt(encryptedKey: string, iv: string, encrypted_key_data: any) {
+    const password_data = this.decrypt_key(encrypted_key_data.content, encrypted_key_data.iv);
+
+    const key = this.deriveKey(password_data);
+    const decipher = crypto.createDecipheriv(this.algorithm, key, Buffer.from(iv, 'hex'));
+    let decrypted = decipher.update(encryptedKey, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  }
+
+  private generateUserKeys(): { publicKey: string; privateKey: string } {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: {
+        type: 'spki',
+        format: 'pem'
+      },
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem',
+        cipher: 'aes-256-cbc',
+        passphrase: process.env.SECRET_KEY,
+      }
+    });
+    return { publicKey, privateKey };
+  }
+
+  encrypt_key(data: string): { iv: string; content: string } {
+
     const key = scryptSync(this.password, this.salt, this.keyLength);
     const iv = randomBytes(this.ivLength);
 
@@ -49,30 +80,41 @@ export class UsersService {
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
 
-    // Compute HMAC over the encrypted data
-    const hmac = createHmac('sha256', this.hmacSecret);
-    hmac.update(encrypted);
-    const hash = hmac.digest('hex');
-
-    return { iv: iv.toString('hex'), content: encrypted, hmac: hash };
+    return { iv: iv.toString('hex'), content: encrypted };
   }
 
-  decrypt(encryptedData: string, iv: string, hmacValue: string): string {
-    // First, validate the HMAC
-    const hmac = createHmac('sha256', this.hmacSecret);
-    hmac.update(encryptedData);
-    const hash = hmac.digest('hex');
-
-    if (hash !== hmacValue) {
-      throw new Error('Data integrity verification failed!');
-    }
-
+  decrypt_key(encryptedData: string, iv: string): string {
     const key = scryptSync(this.password, this.salt, this.keyLength);
+
     const decipher = createDecipheriv(this.algorithm, key, Buffer.from(iv, 'hex'));
     let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 
     return decrypted;
+  }
+
+  async cypher(): Promise<{ salt: Buffer; iv: string; encryptedKey: string; content: string }[]> {
+    const users: User[] = await this.usersRepository.find();
+
+    return Promise.all(users.map((user) => {
+      const dataToEncrypt = `${user.firstName} ${user.lastName} ${user.text}`;
+
+      //Encrypting data
+      const encrypted_data = this.encrypt(dataToEncrypt, user.publicKey);
+      console.log("Encrypted_data:",encrypted_data);
+      const encrypted_key_data = this.encrypt_key(user.publicKey);
+      console.log("Encrypted_key_data:",encrypted_key_data);
+      //Decrypting data
+      const decrypted_data = this.decrypt(encrypted_data.encryptedData, encrypted_data.iv, encrypted_key_data);
+      console.log("Decrypted_data:",decrypted_data);
+
+      return {
+        salt: this.salt,
+        iv: encrypted_data.iv,
+        encryptedKey: encrypted_data.encryptedData,
+        content: decrypted_data
+      };
+    }));
   }
 
   async create(user: any): Promise<User> {
@@ -85,23 +127,5 @@ export class UsersService {
       publicKey: publicKey,
       privateKey: privateKey,
     });
-  }
-
-  generateUserKeys() {
-    const { publicKey, privateKey } = generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-      publicKeyEncoding: {
-        type: 'spki',
-        format: 'pem'
-      },
-      privateKeyEncoding: {
-        type: 'pkcs8',
-        format: 'pem',
-        cipher: 'aes-256-cbc',
-        passphrase: 'top secret'
-      }
-    });
-
-    return { publicKey, privateKey };
   }
 }
