@@ -28,6 +28,7 @@ export class UsersService {
       const cipher = crypto.createCipheriv(algorithm, symmetricKey, iv);
       let encryptedData: string = cipher.update(dataToEncrypt, 'utf8', 'hex');
       encryptedData += cipher.final('hex');
+      console.log("ENCRYPTED DATA", encryptedData);
 
       // Encrypt the symmetric key using the user's public key
       const encryptedSymmetricKey = await this.encryptSymmetricKeyWithPublicKey('' + user.id, symmetricKey);
@@ -60,7 +61,6 @@ export class UsersService {
       lastName: user.lastName,
       text: user.text,
       publicKey: publicKey,
-      privateKey: privateKey
     });
   }
 

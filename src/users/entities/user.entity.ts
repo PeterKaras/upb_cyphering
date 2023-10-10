@@ -21,7 +21,4 @@ export class User {
 
   @Column()
   publicKey: string;
-
-  @Column()
-  privateKey: string;
 }
