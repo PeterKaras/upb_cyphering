@@ -18,10 +18,4 @@ export class User {
 
   @Column()
   text: string;
-
-  @Column()
-  publicKey: string;
-
-  @Column()
-  privateKey: string;
 }

@@ -4,128 +4,101 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entities/user.entity";
 import * as dotenv from "dotenv";
-import forge from "node-forge";
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto";
 
 dotenv.config();
 
-interface RSAKey {
-  modulus: string;
-  exponent: string;
-}
-
 @Injectable()
 export class UsersService {
-  private readonly password = process.env.SECRET_KEY;
   private readonly algorithm = 'aes-256-cbc';
-  private readonly keyLength = 32;
-  private readonly ivLength = 16;
-  private readonly iterations = 10000;
 
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>
-  ) {}
-
-  private deriveKey(password: string, salt: string): Buffer {
-    return crypto.pbkdf2Sync(password, salt, this.iterations, this.keyLength, 'sha512');
+  ) {
   }
 
-  private encrypt(data: string, password: string, salt: string) {
-    const key = this.deriveKey(password, salt);
+  private readonly modulusLength = 2048; // Key size
+  private symmetricKey = crypto.randomBytes(32); // Generovanie symetrického kľúča
+
+  encryptDataWithSymmetricKey(data: string): string {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv(this.algorithm, key, iv);
+    const cipher = crypto.createCipheriv(this.algorithm, this.symmetricKey, iv);
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return {
-      iv: iv.toString('hex'),
-      encryptedData: encrypted
-    };
+    return iv.toString('hex') + ':' + encrypted; // Ukladanie IV spolu s šifrovanými dátami
   }
 
-  private decrypt(encryptedKey: string, iv: string, encrypted_key_data: any, salt: string) {
-    const password_data = this.decrypt_key(encrypted_key_data.content, encrypted_key_data.iv, salt);
+  decryptDataWithSymmetricKey(encryptedData: string): string {
+    const parts = encryptedData.split(':');
+    const iv = Buffer.from(parts.shift(), 'hex');
+    const encryptedText = Buffer.from(parts.join(':'), 'hex');
+    const decipher = crypto.createDecipheriv(this.algorithm, this.symmetricKey, iv);
+    let decrypted = decipher.update(encryptedText.toString('hex'), 'hex', 'utf8');
 
-    const key = this.deriveKey(password_data, salt);
-    const decipher = crypto.createDecipheriv(this.algorithm, key, Buffer.from(iv, 'hex'));
-    let decrypted = decipher.update(encryptedKey, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
   }
 
-  private generateUserKeys(): { publicKey: string; privateKey: string } {
+  encryptSymmetricKeyWithPublicKey(publicKey: string): string {
+    return crypto.publicEncrypt(publicKey, this.symmetricKey).toString('base64');
+  }
+
+  decryptSymmetricKeyWithPrivateKey(encryptedKey: string, privateKey: string): Buffer {
+    return crypto.privateDecrypt(privateKey, Buffer.from(encryptedKey, 'base64'));
+  }
+
+  generateKeyPair(): { publicKey: string; privateKey: string } {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-      modulusLength: 2048,
+      modulusLength: this.modulusLength,
       publicKeyEncoding: {
         type: 'spki',
         format: 'pem'
       },
       privateKeyEncoding: {
         type: 'pkcs8',
-        format: 'pem',
-        cipher: 'aes-256-cbc',
-        passphrase: process.env.SECRET_KEY,
+        format: 'pem'
       }
     });
     return { publicKey, privateKey };
   }
 
-  encrypt_key(data: string, salt: string): { iv: string; content: string } {
-    const key = scryptSync(this.password, salt, this.keyLength);
-    const iv = randomBytes(this.ivLength);
-
-    const cipher = createCipheriv(this.algorithm, key, iv);
-    let encrypted = cipher.update(data, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-
-    return {iv: iv.toString('hex'), content: encrypted };
-  }
-
-  decrypt_key(encryptedData: string, iv: string, salt: string): string {
-    const key = scryptSync(this.password, salt, this.keyLength);
-
-    const decipher = createDecipheriv(this.algorithm, key, Buffer.from(iv, 'hex'));
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-
-    return decrypted;
-  }
-
-  async cypher(): Promise<{ iv: string; encryptedKey: string; content: string }[]> {
+  async cypher(): Promise<Awaited<string>[]> {
     const users: User[] = await this.usersRepository.find();
 
     return Promise.all(users.map((user) => {
       const dataToEncrypt = `${user.firstName} ${user.lastName} ${user.text}`;
-      const salt = randomBytes(16);
+      const encryptedData = this.encryptDataWithSymmetricKey(dataToEncrypt);
+      const { publicKey, privateKey } = this.generateKeyPair();
+      const encryptedSymmetricKey = this.encryptSymmetricKeyWithPublicKey(publicKey);
 
-      //Encrypting data
-      const encrypted_data = this.encrypt(dataToEncrypt, user.publicKey, salt.toString('hex'));
-      console.log("Encrypted_data:",encrypted_data);
+      // Dešifrovanie symetrického kľúča s privátnym kľúčom
+      const decryptedSymmetricKey = this.decryptSymmetricKeyWithPrivateKey(encryptedSymmetricKey, privateKey);
 
-      //Encrypting key
-      const encrypted_key_data = this.encrypt_key(user.publicKey, salt.toString('hex'));
-      console.log("Encrypted_key_data:",encrypted_key_data);
+      // Overenie, či dešifrovaný symetrický kľúč je rovnaký ako pôvodný
+      if (decryptedSymmetricKey.toString() !== this.symmetricKey.toString()) {
+        throw new Error('Symmetric key decryption failed!');
+      }
 
-      //Decrypting data
-      const decrypted_data = this.decrypt(encrypted_data.encryptedData, encrypted_data.iv, encrypted_key_data, salt.toString('hex'));
-      console.log("Decrypted_data:",decrypted_data);
+      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData);
 
-      return {
-        iv: encrypted_data.iv,
-        encryptedKey: encrypted_data.encryptedData,
-        content: decrypted_data
-      };
+      // Overenie integrity dát
+      if (decryptedData !== dataToEncrypt) {
+        throw new Error('Data integrity verification failed!');
+      }
+      console.log('Original: ', dataToEncrypt);
+      console.log('Encrypted: ', encryptedData);
+      console.log('Decrypted: ', decryptedData);
+      console.log('Decrypted symmetric key: ', decryptedSymmetricKey.toString());
+      console.log('Original symmetric key: ', this.symmetricKey.toString());
+      console.log("--------------------------------------------------------------")
+      return `Original: ${dataToEncrypt}, Encrypted: ${encryptedData}, Decrypted: ${decryptedData}`;
     }));
   }
 
   async create(user: any): Promise<User> {
-    const { publicKey, privateKey } = this.generateUserKeys();
-
     return await this.usersRepository.save({
       firstName: user.firstName,
       lastName: user.lastName,
       text: user.text,
-      publicKey: publicKey,
-      privateKey: privateKey,
     });
   }
 }
