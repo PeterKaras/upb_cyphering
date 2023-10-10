@@ -35,6 +35,10 @@ export class UsersService {
       // Generate HMAC for encrypted data
       const hmac = this.generateHMAC(encryptedData, symmetricKey);
 
+      const decryptData = this.decryptData(encryptedData, symmetricKey, iv);
+      const hmacIsValid = this.verifyHMAC(encryptedData, hmac, symmetricKey);
+      console.log("HI", decryptData, hmacIsValid);
+
       return {
         encryptedData,
         iv: iv.toString('hex'),
@@ -56,6 +60,7 @@ export class UsersService {
       lastName: user.lastName,
       text: user.text,
       publicKey: publicKey,
+      privateKey: privateKey
     });
   }
 
