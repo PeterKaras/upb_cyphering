@@ -18,4 +18,7 @@ export class User {
 
   @Column()
   text: string;
+
+  @Column()
+  publicKey: string;
 }
