@@ -19,27 +19,27 @@ export class UsersService {
   private readonly modulusLength = 2048; // Key size
   private symmetricKey = crypto.randomBytes(32); // Generovanie symetrického kľúča
 
-  encryptDataWithSymmetricKey(data: string): string {
+  encryptDataWithSymmetricKey(data: string, symmetricKey: Buffer): string {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv(this.algorithm, this.symmetricKey, iv);
+    const cipher = crypto.createCipheriv(this.algorithm, symmetricKey, iv);
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     return iv.toString('hex') + ':' + encrypted; // Ukladanie IV spolu s šifrovanými dátami
   }
 
-  decryptDataWithSymmetricKey(encryptedData: string): string {
+  decryptDataWithSymmetricKey(encryptedData: string, symmetricKey: Buffer): string {
     const parts = encryptedData.split(':');
     const iv = Buffer.from(parts.shift(), 'hex');
     const encryptedText = Buffer.from(parts.join(':'), 'hex');
-    const decipher = crypto.createDecipheriv(this.algorithm, this.symmetricKey, iv);
+    const decipher = crypto.createDecipheriv(this.algorithm, symmetricKey, iv);
     let decrypted = decipher.update(encryptedText.toString('hex'), 'hex', 'utf8');
 
     decrypted += decipher.final('utf8');
     return decrypted;
   }
 
-  encryptSymmetricKeyWithPublicKey(publicKey: string): string {
-    return crypto.publicEncrypt(publicKey, this.symmetricKey).toString('base64');
+  encryptSymmetricKeyWithPublicKey(publicKey: string, symmetricKey: Buffer): string {
+    return crypto.publicEncrypt(publicKey, symmetricKey).toString('base64');
   }
 
   decryptSymmetricKeyWithPrivateKey(encryptedKey: string, privateKey: string): Buffer {
@@ -66,19 +66,21 @@ export class UsersService {
 
     return Promise.all(users.map((user) => {
       const dataToEncrypt = `${user.firstName} ${user.lastName} ${user.text}`;
-      const encryptedData = this.encryptDataWithSymmetricKey(dataToEncrypt);
+      const symmetricKey = crypto.randomBytes(32);
+
+      const encryptedData = this.encryptDataWithSymmetricKey(dataToEncrypt, symmetricKey);
       const { publicKey, privateKey } = this.generateKeyPair();
-      const encryptedSymmetricKey = this.encryptSymmetricKeyWithPublicKey(publicKey);
+      const encryptedSymmetricKey = this.encryptSymmetricKeyWithPublicKey(publicKey, symmetricKey);
 
       // Dešifrovanie symetrického kľúča s privátnym kľúčom
       const decryptedSymmetricKey = this.decryptSymmetricKeyWithPrivateKey(encryptedSymmetricKey, privateKey);
 
       // Overenie, či dešifrovaný symetrický kľúč je rovnaký ako pôvodný
-      if (decryptedSymmetricKey.toString() !== this.symmetricKey.toString()) {
+      if (decryptedSymmetricKey.toString() !== symmetricKey.toString()) {
         throw new Error('Symmetric key decryption failed!');
       }
 
-      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData);
+      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, symmetricKey);
 
       // Overenie integrity dát
       if (decryptedData !== dataToEncrypt) {
@@ -88,7 +90,7 @@ export class UsersService {
       console.log('Encrypted: ', encryptedData);
       console.log('Decrypted: ', decryptedData);
       console.log('Decrypted symmetric key: ', decryptedSymmetricKey.toString());
-      console.log('Original symmetric key: ', this.symmetricKey.toString());
+      console.log('Original symmetric key: ', symmetricKey.toString());
       console.log("--------------------------------------------------------------")
       return `Original: ${dataToEncrypt}, Encrypted: ${encryptedData}, Decrypted: ${decryptedData}`;
     }));
