@@ -87,7 +87,11 @@ export class UsersService {
       console.log(`Symmetric key: ${symmetricKey.toString('hex')}`);
       console.log(`Encrypted symmetric key: ${encryptedSymmetricKey}`);
 
-      return `Original: ${dataToEncrypt}, Encrypted: ${encryptedData}, Decrypted: ${decryptedData}`;
+      return `
+      All data integrity checks passed!
+      Original: ${dataToEncrypt.firstName}, ${dataToEncrypt.lastName}, ${dataToEncrypt.text}, 
+      Encrypted: ${encryptedData}, 
+      Decrypted: ${decryptedData.firstName}, ${decryptedData.lastName}, ${decryptedData.text}`;
     }));
   }
 
