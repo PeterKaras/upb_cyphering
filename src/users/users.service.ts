@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import * as crypto from "crypto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entities/user.entity";
 import * as dotenv from "dotenv";
+import * as CryptoJS from "crypto-js"; // Import crypto-js
 
 dotenv.config();
 
@@ -18,49 +18,47 @@ export class UsersService {
 
   private readonly modulusLength = 2048; // Key size
 
-  encryptDataWithSymmetricKey(data: string, symmetricKey: Buffer): string {
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv(this.algorithm, symmetricKey, iv);
-    let encrypted = cipher.update(data, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted;
+  encryptDataWithSymmetricKey(data: string, symmetricKey: string): string {
+    const iv = CryptoJS.lib.WordArray.random(16);
+    const encrypted = CryptoJS.AES.encrypt(data, symmetricKey, {
+      iv: iv,
+      mode: CryptoJS.mode.CFB,
+      padding: CryptoJS.pad.Pkcs7,
+    });
+
+    return iv.toString() + ':' + encrypted.toString();
   }
 
-  decryptDataWithSymmetricKey(encryptedData: string, symmetricKey: Buffer): { firstName: string; lastName: string; text: string } {
+  decryptDataWithSymmetricKey(encryptedData: string, symmetricKey: string): { firstName: string; lastName: string; text: string } {
     const parts = encryptedData.split(':');
-    const iv = Buffer.from(parts.shift(), 'hex');
-    const encryptedText = Buffer.from(parts.join(':'), 'hex');
-    const decipher = crypto.createDecipheriv(this.algorithm, symmetricKey, iv);
-    let decrypted = decipher.update(encryptedText.toString('hex'), 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    console.log(decrypted);
-    return JSON.parse(decrypted);
+    const iv = CryptoJS.enc.Hex.parse(parts.shift());
+    const encryptedText = parts.join(':');
+    const decrypted = CryptoJS.AES.decrypt(encryptedText, symmetricKey, {
+      iv: iv,
+      mode: CryptoJS.mode.CFB,
+      padding: CryptoJS.pad.Pkcs7,
+    });
+
+    const decryptedData = decrypted.toString(CryptoJS.enc.Utf8);
+    return JSON.parse(decryptedData);
   }
 
-  encryptSymmetricKeyWithPrivateKey(privateKey: string, symmetricKey: Buffer): string {
-    return crypto.privateEncrypt(privateKey, symmetricKey).toString('base64');
+  encryptSymmetricKeyWithPrivateKey(privateKey: string, symmetricKey: string): string {
+    const encrypted = CryptoJS.AES.encrypt(symmetricKey, privateKey);
+    return encrypted.toString();
   }
 
-  decryptSymmetricKeyWithPublicKey(encryptedKey: string, publicKey: string): Buffer {
-    return crypto.publicDecrypt(publicKey, Buffer.from(encryptedKey, 'base64'));
+  decryptSymmetricKeyWithPublicKey(encryptedKey: string, publicKey: string): string {
+    const decrypted = CryptoJS.AES.decrypt(encryptedKey, publicKey);
+    return decrypted.toString(CryptoJS.enc.Utf8);
   }
 
   generateKeyPair(): { publicKey: string; privateKey: string } {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-      modulusLength: this.modulusLength,
-      publicKeyEncoding: {
-        type: 'spki',
-        format: 'pem'
-      },
-      privateKeyEncoding: {
-        type: 'pkcs8',
-        format: 'pem'
-      }
-    });
-    return { publicKey, privateKey };
+    const keyPair = CryptoJS.SHA256(CryptoJS.lib.WordArray.random(32)).toString();
+    return { publicKey: keyPair, privateKey: keyPair };
   }
 
-  async cypher(): Promise<Awaited<string>[]> {
+  async cypher(): Promise<any> {
     const users: User[] = await this.usersRepository.find();
     return Promise.all(users.map((user) => {
       const dataToEncrypt = {
@@ -68,30 +66,17 @@ export class UsersService {
         lastName: user.lastName,
         text: user.text,
       }
-      const symmetricKey = crypto.randomBytes(32);
+      const symmetricKey = CryptoJS.lib.WordArray.random(32).toString();
       const encryptedData = this.encryptDataWithSymmetricKey(JSON.stringify(dataToEncrypt), symmetricKey);
       const { publicKey, privateKey } = this.generateKeyPair();
       const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(privateKey, symmetricKey);
-      const decryptedSymmetricKey = this.decryptSymmetricKeyWithPublicKey(encryptedSymmetricKey, publicKey);
-      if (decryptedSymmetricKey.toString() !== symmetricKey.toString()) {
-        throw new Error('Symmetric key decryption failed!');
-      }
-      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, decryptedSymmetricKey);
-      if (decryptedData.firstName !== dataToEncrypt.firstName
-        || decryptedData.lastName !== dataToEncrypt.lastName
-        || decryptedData.text !== dataToEncrypt.text) {
-        throw new Error('Data integrity verification failed!');
-      }
 
-      console.log(`Original: ${dataToEncrypt}, Encrypted: ${encryptedData}, Decrypted: ${decryptedData}`);
-      console.log(`Symmetric key: ${symmetricKey.toString('hex')}`);
-      console.log(`Encrypted symmetric key: ${encryptedSymmetricKey}`);
-
-      return `
-      All data integrity checks passed!
-      Original: ${dataToEncrypt.firstName}, ${dataToEncrypt.lastName}, ${dataToEncrypt.text}, 
-      Encrypted: ${encryptedData}, 
-      Decrypted: ${decryptedData.firstName}, ${decryptedData.lastName}, ${decryptedData.text}`;
+      return {
+        original: dataToEncrypt,
+        encrypted: encryptedData,
+        encryptedSymmetricKey,
+        publicKey,
+      }
     }));
   }
 

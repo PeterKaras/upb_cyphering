@@ -11,7 +11,7 @@ export class UsersController {
   ) {}
 
 
-  @Get('cypher')
+  @Get('encrypted')
   async cypher(): Promise<any> {
     return await this.usersService.cypher();
   }
