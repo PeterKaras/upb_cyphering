@@ -83,9 +83,12 @@ export class UsersService {
         throw new Error('Data integrity verification failed!');
       }
 
-      console.log(`Original: ${dataToEncrypt}, Encrypted: ${encryptedData}, Decrypted: ${decryptedData}`);
+      console.log(`Original: ${dataToEncrypt.firstName} ${dataToEncrypt.lastName} ${dataToEncrypt.text}`);
+      console.log(`Encrypted: ${encryptedData}`);
+      console.log(`Decrypted: ${decryptedData.firstName} ${decryptedData.lastName} ${decryptedData.text}`);
       console.log(`Symmetric key: ${symmetricKey.toString('hex')}`);
       console.log(`Encrypted symmetric key: ${encryptedSymmetricKey}`);
+      console.log("-------------------------------------------------------")
 
       return `
       All data integrity checks passed!
