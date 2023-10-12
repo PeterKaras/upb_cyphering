@@ -9,14 +9,10 @@ dotenv.config();
 
 @Injectable()
 export class UsersService {
-  private readonly algorithm = 'aes-256-cbc';
-
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>
   ) {
   }
-
-  private readonly modulusLength = 2048; // Key size
 
   encryptDataWithSymmetricKey(data: string, symmetricKey: string): string {
     const iv = CryptoJS.lib.WordArray.random(16);
