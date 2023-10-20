@@ -61,41 +61,52 @@ export class UsersService {
     return { publicKey, privateKey };
   }
 
-  async cypher(): Promise<Awaited<string>[]> {
-    const parsedData = await this.readJsonFile("output");
+  async cypher(): Promise<any> {
     const symmetricKey = crypto.randomBytes(32);
+    const { publicKey, privateKey } = this.generateKeyPair();
+    const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(privateKey, symmetricKey);
+    const users = await this.usersRepository.find(); // find all users
 
-    // First, encrypt all the data and write to encryptedData.json
-    const encryptedDataSet = parsedData.map((user) => {
-      const dataToEncrypt = {
+    const dataToEncrypt = users.map((user) => { // map users to the data we want to encrypt
+      return {
         firstName: user.firstName,
         lastName: user.lastName,
         text: user.text,
       }
-      return this.encryptDataWithSymmetricKey(JSON.stringify(dataToEncrypt), symmetricKey);
     });
-    await this.writeDataToJson(encryptedDataSet, 'encryptedData');
 
-    // Now, read the encryptedData.json and perform decryption
-    const encryptedDataFromFile = await this.readJsonFile('encryptedData');
-    return Promise.all(encryptedDataFromFile.map((encryptedData) => {
-      const { publicKey, privateKey } = this.generateKeyPair();
-      const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(privateKey, symmetricKey);
-      const decryptedSymmetricKey = this.decryptSymmetricKeyWithPublicKey(encryptedSymmetricKey, publicKey);
-      if (decryptedSymmetricKey.toString() !== symmetricKey.toString()) {
-        throw new Error('Symmetric key decryption failed!');
-      }
+    const FILENAME = 'encryptedData' + Math.random(); // name of the file to write the encrypted data to
+    const encryptedDataSet = this.encryptDataWithSymmetricKey(JSON.stringify(dataToEncrypt), symmetricKey); // encrypt the data
+    await this.writeDataToJson(encryptedDataSet, FILENAME); // write the encrypted data to a file
+    const encryptedDataFromFile = await this.readJsonFile(FILENAME); // read the encrypted data from the file
 
-      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, decryptedSymmetricKey);
-      this.writeDataToJson(decryptedData, 'decryptedData'); // Write decrypted data
+    const decryptedSymmetricKey = this.decryptSymmetricKeyWithPublicKey(encryptedSymmetricKey, publicKey); // decrypt the symmetric key with the public key
+    if (decryptedSymmetricKey.toString() !== symmetricKey.toString()) { // check if the decrypted symmetric key matches the original one
+      throw new Error('Symmetric key decryption failed!');
+    }
 
-      // ... [rest of the logs and checks]
+    const decryptedData = this.decryptDataWithSymmetricKey(encryptedDataFromFile.toString(), decryptedSymmetricKey); // decrypt the data
+    this.writeDataToJson(decryptedData, 'decryptedData'); // write the decrypted data to a file
+    const parsedData = JSON.parse(JSON.stringify(decryptedData)); //parse the decrypted data to a string
 
-      return `
-      All data integrity checks passed!
-      Encrypted: ${encryptedData}, 
-      Decrypted: ${decryptedData.firstName}, ${decryptedData.lastName}, ${decryptedData.text}`;
-    }));
+    console.log("=======================================")
+    console.log("Original data: ")
+    console.log(dataToEncrypt)
+    console.log("=======================================")
+    console.log("Encrypted data: ")
+    console.log(encryptedDataSet)
+    console.log("=======================================")
+    console.log("Decrypted data: ")
+    console.log(decryptedData)
+
+    return ({ // return the result
+      message: "All data integrity checks passed!",
+      original: `${dataToEncrypt}`,
+      Encrypted: `${encryptedDataFromFile}`, 
+      DecryptedStringData: `${decryptedData}`,
+      FirstNameOfParsedData: parsedData[0].firstName,
+      FirstNameOfOriginalData: dataToEncrypt[0].firstName
+    })
   }
 
 
