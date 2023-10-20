@@ -76,6 +76,7 @@ export class UsersService {
     });
 
     const FILENAME = 'encryptedData' + Math.random(); // name of the file to write the encrypted data to
+    const DESCRYPTED_FILENAME = 'decryptedData' + Math.random(); // name of the file to write the decrypted data to
     const encryptedDataSet = this.encryptDataWithSymmetricKey(JSON.stringify(dataToEncrypt), symmetricKey); // encrypt the data
     await this.writeDataToJson(encryptedDataSet, FILENAME); // write the encrypted data to a file
     const encryptedDataFromFile = await this.readJsonFile(FILENAME); // read the encrypted data from the file
@@ -86,7 +87,7 @@ export class UsersService {
     }
 
     const decryptedData = this.decryptDataWithSymmetricKey(encryptedDataFromFile.toString(), decryptedSymmetricKey); // decrypt the data
-    this.writeDataToJson(decryptedData, 'decryptedData'); // write the decrypted data to a file
+    this.writeDataToJson(decryptedData, DESCRYPTED_FILENAME); // write the decrypted data to a file
     const parsedData = JSON.parse(JSON.stringify(decryptedData)); //parse the decrypted data to a string
 
     console.log("=======================================")
