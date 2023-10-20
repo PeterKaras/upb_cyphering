@@ -4,8 +4,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entities/user.entity";
 import * as dotenv from "dotenv";
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 dotenv.config();
 
@@ -63,19 +63,22 @@ export class UsersService {
 
   async cypher(): Promise<Awaited<string>[]> {
     const parsedData = await this.readJsonFile("output");
+    const symmetricKey = crypto.randomBytes(32);
 
-    return Promise.all(parsedData.map((user) => {
+    // First, encrypt all the data and write to encryptedData.json
+    const encryptedDataSet = parsedData.map((user) => {
       const dataToEncrypt = {
         firstName: user.firstName,
         lastName: user.lastName,
         text: user.text,
       }
-      const symmetricKey = crypto.randomBytes(32);
-      const encryptedData = this.encryptDataWithSymmetricKey(JSON.stringify(dataToEncrypt), symmetricKey);
+      return this.encryptDataWithSymmetricKey(JSON.stringify(dataToEncrypt), symmetricKey);
+    });
+    await this.writeDataToJson(encryptedDataSet, 'encryptedData');
 
-      console.log("Writing encrypted data to file");
-      this.writeDataToJson(encryptedData, 'encryptedData'); // Write encrypted data
-
+    // Now, read the encryptedData.json and perform decryption
+    const encryptedDataFromFile = await this.readJsonFile('encryptedData');
+    return Promise.all(encryptedDataFromFile.map((encryptedData) => {
       const { publicKey, privateKey } = this.generateKeyPair();
       const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(privateKey, symmetricKey);
       const decryptedSymmetricKey = this.decryptSymmetricKeyWithPublicKey(encryptedSymmetricKey, publicKey);
@@ -84,18 +87,17 @@ export class UsersService {
       }
 
       const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, decryptedSymmetricKey);
-      console.log("Writing decrypted data to file");
       this.writeDataToJson(decryptedData, 'decryptedData'); // Write decrypted data
 
       // ... [rest of the logs and checks]
 
       return `
       All data integrity checks passed!
-      Original: ${dataToEncrypt.firstName}, ${dataToEncrypt.lastName}, ${dataToEncrypt.text}, 
       Encrypted: ${encryptedData}, 
       Decrypted: ${decryptedData.firstName}, ${decryptedData.lastName}, ${decryptedData.text}`;
     }));
   }
+
 
   async readJsonFile(fileName: string): Promise<any> {
     const filePath = path.join(__dirname, '../../' + fileName + '.json');
@@ -117,12 +119,17 @@ export class UsersService {
       existingData = JSON.parse(rawData);
     }
 
-    // Append the new data to the existing data
-    existingData.push(data);
+    // If the data is an array, concatenate it with the existing data
+    if (Array.isArray(data)) {
+      existingData = existingData.concat(data);
+    } else {
+      existingData.push(data);
+    }
 
     // Write the updated data back to the file
     fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
   }
+
 
   async create(data: { firstName: string; lastName: string; text: string }): Promise<User> {
     const createdUser = await this.usersRepository.create(data);
