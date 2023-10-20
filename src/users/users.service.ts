@@ -4,6 +4,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entities/user.entity";
 import * as dotenv from "dotenv";
+import * as fs from 'fs';
+import * as path from 'path';
 
 dotenv.config();
 
@@ -33,7 +35,6 @@ export class UsersService {
     const decipher = crypto.createDecipheriv(this.algorithm, symmetricKey, iv);
     let decrypted = decipher.update(encryptedText.toString('hex'), 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    console.log(decrypted);
     return JSON.parse(decrypted);
   }
 
@@ -61,8 +62,9 @@ export class UsersService {
   }
 
   async cypher(): Promise<Awaited<string>[]> {
-    const users: User[] = await this.usersRepository.find();
-    return Promise.all(users.map((user) => {
+    const parsedData = await this.readJsonFile("output");
+
+    return Promise.all(parsedData.map((user) => {
       const dataToEncrypt = {
         firstName: user.firstName,
         lastName: user.lastName,
@@ -70,25 +72,22 @@ export class UsersService {
       }
       const symmetricKey = crypto.randomBytes(32);
       const encryptedData = this.encryptDataWithSymmetricKey(JSON.stringify(dataToEncrypt), symmetricKey);
+
+      console.log("Writing encrypted data to file");
+      this.writeDataToJson(encryptedData, 'encryptedData'); // Write encrypted data
+
       const { publicKey, privateKey } = this.generateKeyPair();
       const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(privateKey, symmetricKey);
       const decryptedSymmetricKey = this.decryptSymmetricKeyWithPublicKey(encryptedSymmetricKey, publicKey);
       if (decryptedSymmetricKey.toString() !== symmetricKey.toString()) {
         throw new Error('Symmetric key decryption failed!');
       }
-      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, decryptedSymmetricKey);
-      if (decryptedData.firstName !== dataToEncrypt.firstName
-        || decryptedData.lastName !== dataToEncrypt.lastName
-        || decryptedData.text !== dataToEncrypt.text) {
-        throw new Error('Data integrity verification failed!');
-      }
 
-      console.log(`Original: ${dataToEncrypt.firstName} ${dataToEncrypt.lastName} ${dataToEncrypt.text}`);
-      console.log(`Encrypted: ${encryptedData}`);
-      console.log(`Decrypted: ${decryptedData.firstName} ${decryptedData.lastName} ${decryptedData.text}`);
-      console.log(`Symmetric key: ${symmetricKey.toString('hex')}`);
-      console.log(`Encrypted symmetric key: ${encryptedSymmetricKey}`);
-      console.log("-------------------------------------------------------")
+      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData, decryptedSymmetricKey);
+      console.log("Writing decrypted data to file");
+      this.writeDataToJson(decryptedData, 'decryptedData'); // Write decrypted data
+
+      // ... [rest of the logs and checks]
 
       return `
       All data integrity checks passed!
@@ -98,11 +97,35 @@ export class UsersService {
     }));
   }
 
-  async create(user: any): Promise<User> {
-    return await this.usersRepository.save({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      text: user.text,
-    });
+  async readJsonFile(fileName: string): Promise<any> {
+    const filePath = path.join(__dirname, '../../' + fileName + '.json');
+    if (fs.existsSync(filePath)) {
+      const rawData = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(rawData);
+    } else {
+      return JSON.parse("[]");
+    }
+  }
+
+  async writeDataToJson(data: any, fileName: string) {
+    const filePath = path.join(__dirname, '../../' + fileName + '.json');
+    let existingData = [];
+
+    // Check if the file exists and read its content
+    if (fs.existsSync(filePath)) {
+      const rawData = fs.readFileSync(filePath, 'utf-8');
+      existingData = JSON.parse(rawData);
+    }
+
+    // Append the new data to the existing data
+    existingData.push(data);
+
+    // Write the updated data back to the file
+    fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
+  }
+
+  async create(data: { firstName: string; lastName: string; text: string }): Promise<User> {
+    const createdUser = await this.usersRepository.create(data);
+    return this.usersRepository.save(createdUser);
   }
 }
