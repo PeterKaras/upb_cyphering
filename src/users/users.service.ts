@@ -38,11 +38,11 @@ export class UsersService {
     return JSON.parse(decrypted);
   }
 
-  encryptSymmetricKeyWithPrivateKey(privateKey: string, symmetricKey: Buffer): string {
+  encryptSymmetricKeyWithPublicKey(privateKey: string, symmetricKey: Buffer): string {
     return crypto.publicEncrypt(privateKey, symmetricKey).toString('base64');
   }
 
-  decryptSymmetricKeyWithPublicKey(encryptedKey: string, publicKey: string): Buffer {
+  decryptSymmetricKeyWithPrivateKey(encryptedKey: string, publicKey: string): Buffer {
     return crypto.privateDecrypt(publicKey, Buffer.from(encryptedKey, 'base64'));
   }
 
@@ -64,7 +64,7 @@ export class UsersService {
   async cypher(): Promise<any> {
     const symmetricKey = crypto.randomBytes(32);
     const { publicKey, privateKey } = this.generateKeyPair();
-    const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(publicKey, symmetricKey); // encrypt the symmetric key with the public key
+    const encryptedSymmetricKey = this.encryptSymmetricKeyWithPublicKey(publicKey, symmetricKey); // encrypt the symmetric key with the public key
     const users = await this.usersRepository.find(); // find all users
 
     const dataToEncrypt = users.map((user) => { // map users to the data we want to encrypt
@@ -81,7 +81,7 @@ export class UsersService {
     await this.writeDataToJson(encryptedDataSet, FILENAME); // write the encrypted data to a file
     const encryptedDataFromFile = await this.readJsonFile(FILENAME); // read the encrypted data from the file
 
-    const decryptedSymmetricKey = this.decryptSymmetricKeyWithPublicKey(encryptedSymmetricKey, privateKey); // decrypt the symmetric key with the private key
+    const decryptedSymmetricKey = this.decryptSymmetricKeyWithPrivateKey(encryptedSymmetricKey, privateKey); // decrypt the symmetric key with the private key
     if (decryptedSymmetricKey.toString() !== symmetricKey.toString()) { // check if the decrypted symmetric key matches the original one
       throw new Error('Symmetric key decryption failed!');
     }
