@@ -4,7 +4,7 @@ import { Repository } from 'typeorm'
 import { User } from './entities/user.entity'
 import * as dotenv from 'dotenv'
 import * as CryptoJS from 'crypto-js' // Import crypto-js
-import { CreateUserDto } from './dto/Create-user.dto'
+import { CreateUserDto } from './dto/create-user.dto'
 import * as fs from "fs";
 import * as path from "path";
 import { mapUserToGetUserDto } from './mapper/user.mapper'

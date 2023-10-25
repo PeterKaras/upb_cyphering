@@ -3,7 +3,7 @@ import { UsersService } from "./users.service";
 import { ApiTags } from "@nestjs/swagger";
 import { User } from "./entities/user.entity";
 import { GetUserDto } from "./dto/get-user.dto";
-import { CreateUserDto } from "./dto/Create-user.dto";
+import { CreateUserDto } from "./dto/create-user.dto";
 import { AuthUserDto } from "../auth/dto/auth-user.dto";
 import { AuthService } from "src/auth/auth.service";
 import { LoggInUser } from "src/auth/dto/log-in-user.dto";
