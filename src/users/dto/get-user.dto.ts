@@ -1,7 +1,10 @@
-import { IsEmail, IsString } from "@nestjs/class-validator";
+import { IsEmail, IsString, IsNumber } from "@nestjs/class-validator";
 
 
 export class GetUserDto {
+
+  @IsNumber()
+  readonly id: number;
 
   @IsString()
   readonly firstName: string;
