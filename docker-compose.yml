@@ -7,6 +7,8 @@ services:
       - '3000:3000'
     depends_on:
       - db
+    networks:
+      - my-network
   db:
     image: postgres
     restart: always
@@ -16,3 +18,9 @@ services:
       POSTGRES_PASSWORD: pass123
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
+    networks:
+      - my-network
+
+networks:
+  my-network:
+    external: true

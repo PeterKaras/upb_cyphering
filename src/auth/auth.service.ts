@@ -32,6 +32,9 @@ export class AuthService {
 
   async login(user: AuthUserDto): Promise<LoggInUser> {
     const fetchedUser = await this.usersService.findOneByEmail(user.email);
+    if (!fetchedUser) {
+      throw new UnauthorizedException('Unauthorized');
+    }
     const payload = {
       email: user.email,
       sub: fetchedUser.id,
