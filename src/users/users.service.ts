@@ -10,6 +10,7 @@ import * as path from "path";
 import { mapUserToGetUserDto } from './mapper/user.mapper'
 import { GetUserDto } from './dto/get-user.dto'
 import * as zxcvbn from "zxcvbn";
+import { AuthUserDto } from '../auth/dto/auth-user.dto'
 
 dotenv.config()
 
@@ -154,5 +155,32 @@ export class UsersService {
 
     const savedUser = await this.usersRepository.save(createdUser)
     return mapUserToGetUserDto(savedUser);
+  }
+
+  async login (user: AuthUserDto): Promise<GetUserDto | undefined> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { email: user.email },
+    })
+
+    if (!existingUser) {
+      throw new BadRequestException('Could not find user with specified email')
+    }
+
+    if (existingUser.password !== user.password) {
+      throw new BadRequestException('Incorrect password')
+    }
+
+    return mapUserToGetUserDto(existingUser);
+  }
+
+  async findOneByEmail(
+    email: string,
+  ): Promise<User | undefined> {
+    let user = await this.usersRepository.findOne({
+      where: { email },
+      select: ['password', 'email', 'id', 'firstName', 'lastName', 'text', 'publicKey', 'timeout'],
+    });
+
+    return user;
   }
 }
