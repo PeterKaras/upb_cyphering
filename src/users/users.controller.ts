@@ -12,7 +12,9 @@ import { LoggedInUser } from "src/common/decorators/log-in-user.dto";
 import { mapUserToGetUserDto } from "./mapper/user.mapper";
 import { LocalAuthGuard } from "src/auth/guards/local-auth.guard";
 import { JwtAuthGuard } from "src/auth/guards/jwt-auth.guard";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 
+@SkipThrottle()
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
@@ -28,6 +30,8 @@ export class UsersController {
     return await this.usersService.create(createUserDto);
   }
 
+  @SkipThrottle({ default: false })
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Public()
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)

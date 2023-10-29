@@ -8,11 +8,16 @@ import { AuthService } from './auth/auth.service';
 import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 config();
 
 @Module({
   imports: [
     AuthModule,
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 15,
+    }]),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DATABASE_HOST,
@@ -33,7 +38,12 @@ config();
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
-    },
+    },    
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    }
+    
   ],
 })
 export class AppModule {}
