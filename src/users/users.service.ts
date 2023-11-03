@@ -183,4 +183,14 @@ export class UsersService {
 
     return user;
   }
+
+  async updatePublicKey(email: string, newPublicKey: string): Promise<User> {
+    const user = await this.findOneByEmail(email)
+    if (!user) {
+      throw new Error('User not found');
+    }
+    user.publicKey = newPublicKey;
+    await this.usersRepository.save(user);
+    return user;
+  }
 }

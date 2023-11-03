@@ -13,6 +13,7 @@ import { mapUserToGetUserDto } from "./mapper/user.mapper";
 import { LocalAuthGuard } from "src/auth/guards/local-auth.guard";
 import { JwtAuthGuard } from "src/auth/guards/jwt-auth.guard";
 import { SkipThrottle, Throttle } from "@nestjs/throttler";
+import { CypherKeyDto } from "./dto/cypherKey.dto";
 
 @SkipThrottle()
 @ApiTags('users')
@@ -54,5 +55,13 @@ export class UsersController {
   ): Promise<GetUserDto> {
       const user = await this.usersService.findOneByEmail(loggedInUser.email);
       return mapUserToGetUserDto(user);
+  }
+
+  @Post('updatePublic')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async updatePublic(@Body() body: CypherKeyDto, @LoggedInUser() loggedInUser: User,): Promise<GetUserDto> {
+    const user = await this.usersService.updatePublicKey(loggedInUser.email, body.publicKey);
+    return mapUserToGetUserDto(user);
   }
 }
