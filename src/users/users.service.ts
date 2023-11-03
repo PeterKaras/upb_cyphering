@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { User } from './entities/user.entity'
 import * as dotenv from 'dotenv'
+import * as crypto from "crypto";
 import * as CryptoJS from 'crypto-js' // Import crypto-js
 import { CreateUserDto } from './dto/create-user.dto'
 import * as fs from "fs";
@@ -19,6 +20,8 @@ export class UsersService {
   constructor (
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
   ) {}
+
+  private readonly modulusLength = 2048;
 
   encryptDataWithSymmetricKey (data: string, symmetricKey: string): string {
     const iv = CryptoJS.lib.WordArray.random(16)
@@ -49,27 +52,37 @@ export class UsersService {
   }
 
   encryptSymmetricKeyWithPublicKey (
-    privateKey: string,
+    publicKey: string,
     symmetricKey: string,
   ): string {
-    const encrypted = CryptoJS.AES.encrypt(symmetricKey, privateKey)
+    const encrypted = CryptoJS.AES.encrypt(symmetricKey, publicKey)
     return encrypted.toString()
   }
 
-  decryptSymmetricKeyWithPublicKey (
+  decryptSymmetricKeyWithPrivateKey (
     encryptedKey: string,
-    publicKey: string,
+    privateKey: string,
   ): string {
-    const decrypted = CryptoJS.AES.decrypt(encryptedKey, publicKey)
+    const decrypted = CryptoJS.AES.decrypt(encryptedKey, privateKey)
     return decrypted.toString(CryptoJS.enc.Utf8)
   }
 
-  generateKeyPair (): { publicKey: string; privateKey: string } {
-    const keyPair = CryptoJS.SHA256(
-      CryptoJS.lib.WordArray.random(32),
-    ).toString()
-    return { publicKey: keyPair, privateKey: keyPair }
-  }     
+  generateKeyPair(): { publicKey: string; privateKey: string } {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: this.modulusLength,
+      publicKeyEncoding: {
+        type: 'spki',
+        format: 'pem'
+      },
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem'
+      }
+    });
+    const newPublicKey = publicKey.replace('-----BEGIN PUBLIC KEY-----', '').replace('-----END PUBLIC KEY-----', '').trim();
+    const newPrivateKey = privateKey.replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').trim();
+    return { publicKey: newPublicKey, privateKey: newPrivateKey };
+  }
 
   async cypher (): Promise<any> {
     // decorator LoggInUser, check if public key is not null
@@ -89,7 +102,7 @@ export class UsersService {
           symmetricKey,
         )
 
-        // const encryptedSymmetricKey = this.encryptSymmetricKeyWithPublicKey(
+        // const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(
         //   publicKey,
         //   symmetricKey,
         // )
@@ -156,7 +169,7 @@ export class UsersService {
     const savedUser = await this.usersRepository.save(createdUser)
     return mapUserToGetUserDto(savedUser);
   }
-
+  /*
   async login (user: AuthUserDto): Promise<GetUserDto | undefined> {
     const existingUser = await this.usersRepository.findOne({
       where: { email: user.email },
@@ -171,7 +184,7 @@ export class UsersService {
     }
 
     return mapUserToGetUserDto(existingUser);
-  }
+  }*/
 
   async findOneByEmail(
     email: string,

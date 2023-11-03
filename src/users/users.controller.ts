@@ -7,7 +7,7 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { AuthUserDto } from "../auth/dto/auth-user.dto";
 import { AuthService } from "src/auth/auth.service";
 import { LoggInUser } from "src/auth/dto/log-in-user.dto";
-import { Public } from "src/common/decorators/pubic.decorator";
+import { Public } from "src/common/decorators/public.decorator";
 import { LoggedInUser } from "src/common/decorators/log-in-user.dto";
 import { mapUserToGetUserDto } from "./mapper/user.mapper";
 import { LocalAuthGuard } from "src/auth/guards/local-auth.guard";
@@ -63,5 +63,14 @@ export class UsersController {
   async updatePublic(@Body() body: CypherKeyDto, @LoggedInUser() loggedInUser: User,): Promise<GetUserDto> {
     const user = await this.usersService.updatePublicKey(loggedInUser.email, body.publicKey);
     return mapUserToGetUserDto(user);
+  }
+
+  @Post('keyPair')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async generateNewKeyPair(@LoggedInUser() loggedInUser: User,): Promise<string> {
+    const keyPair = this.usersService.generateKeyPair();
+    await this.usersService.updatePublicKey(loggedInUser.email, keyPair.publicKey)
+    return keyPair.privateKey;
   }
 }
