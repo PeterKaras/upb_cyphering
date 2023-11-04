@@ -4,14 +4,12 @@ import { Repository } from 'typeorm'
 import { User } from './entities/user.entity'
 import * as dotenv from 'dotenv'
 import * as crypto from "crypto";
-import * as CryptoJS from 'crypto-js' // Import crypto-js
 import { CreateUserDto } from './dto/create-user.dto'
 import * as fs from "fs";
 import * as path from "path";
 import { mapUserToGetUserDto } from './mapper/user.mapper'
 import { GetUserDto } from './dto/get-user.dto'
 import * as zxcvbn from "zxcvbn";
-import { AuthUserDto } from '../auth/dto/auth-user.dto'
 
 dotenv.config()
 
@@ -22,49 +20,18 @@ export class UsersService {
   ) {}
 
   private readonly modulusLength = 2048;
+  private readonly algorithm = 'aes-256-cbc';
 
-  encryptDataWithSymmetricKey (data: string, symmetricKey: string): string {
-    const iv = CryptoJS.lib.WordArray.random(16)
-    const encrypted = CryptoJS.AES.encrypt(data, symmetricKey, {
-      iv: iv,
-      mode: CryptoJS.mode.CFB,
-      padding: CryptoJS.pad.Pkcs7,
-    })
-
-    return iv.toString() + ':' + encrypted.toString()
+  encryptSymmetricKeyWithPublicKey(privateKey: string, symmetricKey: Buffer): string {
+    return crypto.publicEncrypt(privateKey, symmetricKey).toString('base64');
   }
 
-  decryptDataWithSymmetricKey (
-    encryptedData: string,
-    symmetricKey: string,
-  ): { firstName: string; lastName: string; text: string } {
-    const parts = encryptedData.split(':')
-    const iv = CryptoJS.enc.Hex.parse(parts.shift())
-    const encryptedText = parts.join(':')
-    const decrypted = CryptoJS.AES.decrypt(encryptedText, symmetricKey, {
-      iv: iv,
-      mode: CryptoJS.mode.CFB,
-      padding: CryptoJS.pad.Pkcs7,
-    })
-
-    const decryptedData = decrypted.toString(CryptoJS.enc.Utf8)
-    return JSON.parse(decryptedData)
-  }
-
-  encryptSymmetricKeyWithPublicKey (
-    publicKey: string,
-    symmetricKey: string,
-  ): string {
-    const encrypted = CryptoJS.AES.encrypt(symmetricKey, publicKey)
-    return encrypted.toString()
-  }
-
-  decryptSymmetricKeyWithPrivateKey (
-    encryptedKey: string,
-    privateKey: string,
-  ): string {
-    const decrypted = CryptoJS.AES.decrypt(encryptedKey, privateKey)
-    return decrypted.toString(CryptoJS.enc.Utf8)
+  encryptDataWithSymmetricKey(data: string, symmetricKey: Buffer): string {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(this.algorithm, symmetricKey, iv);
+    let encrypted = cipher.update(data, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return iv.toString('hex') + ':' + encrypted;
   }
 
   generateKeyPair(): { publicKey: string; privateKey: string } {
@@ -79,42 +46,36 @@ export class UsersService {
         format: 'pem'
       }
     });
-    const newPublicKey = publicKey.replace('-----BEGIN PUBLIC KEY-----', '').replace('-----END PUBLIC KEY-----', '').trim();
-    const newPrivateKey = privateKey.replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').trim();
+    const newPublicKey = publicKey;
+    const newPrivateKey = privateKey;
     return { publicKey: newPublicKey, privateKey: newPrivateKey };
   }
 
-  async cypher (): Promise<any> {
-    // decorator LoggInUser, check if public key is not null
-    // if not null, encrypt symmetric key with public key
-    // if null, return error with corresponding message to create public key
+  async cypher (loggInUser: User): Promise<any> {
+    const publicKey = loggInUser.publicKey
+    if (!publicKey) throw new BadRequestException('User has no public key')
     const users: User[] = await this.usersRepository.find()
-    return Promise.all(
-      users.map(user => {
-        const dataToEncrypt = {
-          firstName: user.firstName,
-          lastName: user.lastName,
-          text: user.text,
-        }
-        const symmetricKey = CryptoJS.lib.WordArray.random(32).toString()
-        const encryptedData = this.encryptDataWithSymmetricKey(
-          JSON.stringify(dataToEncrypt),
-          symmetricKey,
-        )
+    const symmetricKey = crypto.randomBytes(32).toString('hex')
 
-        // const encryptedSymmetricKey = this.encryptSymmetricKeyWithPrivateKey(
-        //   publicKey,
-        //   symmetricKey,
-        // )
-
-        return {
-          original: dataToEncrypt,
-          encrypted: encryptedData,
-          // encryptedSymmetricKey,
-          // publicKey,
-        }
-      }),
+    const encryptedSymmetricKey = this.encryptSymmetricKeyWithPublicKey(
+      publicKey,
+      Buffer.from(symmetricKey, 'hex'),
     )
+
+    const encryptedData = users.map(user => {
+      return {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        text: user.text,
+      }
+    })
+
+    const encryptedDataWithSymmetricKey = this.encryptDataWithSymmetricKey(JSON.stringify(encryptedData), Buffer.from(symmetricKey, 'hex'))
+
+    return {
+      key: encryptedSymmetricKey,
+      data: encryptedDataWithSymmetricKey,
+    }
   }
 
   async create (user: CreateUserDto): Promise<GetUserDto | undefined> {
@@ -169,22 +130,6 @@ export class UsersService {
     const savedUser = await this.usersRepository.save(createdUser)
     return mapUserToGetUserDto(savedUser);
   }
-  /*
-  async login (user: AuthUserDto): Promise<GetUserDto | undefined> {
-    const existingUser = await this.usersRepository.findOne({
-      where: { email: user.email },
-    })
-
-    if (!existingUser) {
-      throw new BadRequestException('Could not find user with specified email')
-    }
-
-    if (existingUser.password !== user.password) {
-      throw new BadRequestException('Incorrect password')
-    }
-
-    return mapUserToGetUserDto(existingUser);
-  }*/
 
   async findOneByEmail(
     email: string,

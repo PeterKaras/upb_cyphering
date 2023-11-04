@@ -43,8 +43,8 @@ export class UsersController {
 
   @HttpCode(HttpStatus.OK)
   @Get('encrypted')
-  async cypher(): Promise<any> {
-    return await this.usersService.cypher();
+  async cypher(@LoggedInUser() loggedInUser: User): Promise<any> {
+    return await this.usersService.cypher(loggedInUser);
   }
 
   @Get('me')
@@ -68,9 +68,12 @@ export class UsersController {
   @Post('keyPair')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async generateNewKeyPair(@LoggedInUser() loggedInUser: User,): Promise<string> {
+  async generateNewKeyPair(@LoggedInUser() loggedInUser: User,): Promise<{privateKey: string, publicKey: string}> {
     const keyPair = this.usersService.generateKeyPair();
     await this.usersService.updatePublicKey(loggedInUser.email, keyPair.publicKey)
-    return keyPair.privateKey;
+    return {
+      privateKey: keyPair.privateKey,
+      publicKey: keyPair.publicKey
+    };
   }
 }
