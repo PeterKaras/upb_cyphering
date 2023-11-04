@@ -148,7 +148,7 @@ export class UsersService {
       throw new BadRequestException('User not found');
     }
     if (!newPublicKey.includes('PUBLIC KEY') || !newPublicKey.includes('END') || !newPublicKey.includes('BEGIN')) {
-      throw new BadRequestException('Invalid public key');
+      throw new BadRequestException('Invalid public key - missing BEGIN or END or PUBLIC KEY');
     }
     user.publicKey = newPublicKey.trim();
     await this.usersRepository.save(user);
