@@ -22,8 +22,8 @@ export class UsersService {
   private readonly modulusLength = 2048;
   private readonly algorithm = 'aes-256-cbc';
 
-  encryptSymmetricKeyWithPublicKey(privateKey: string, symmetricKey: Buffer): string {
-    return crypto.publicEncrypt(privateKey, symmetricKey).toString('base64');
+  encryptSymmetricKeyWithPublicKey(publicKey: string, symmetricKey: Buffer): string {
+    return crypto.publicEncrypt(publicKey, symmetricKey).toString('base64');
   }
 
   encryptDataWithSymmetricKey(data: string, symmetricKey: Buffer): string {
@@ -145,9 +145,12 @@ export class UsersService {
   async updatePublicKey(email: string, newPublicKey: string): Promise<User> {
     const user = await this.findOneByEmail(email)
     if (!user) {
-      throw new Error('User not found');
+      throw new BadRequestException('User not found');
     }
-    user.publicKey = newPublicKey;
+    if (!newPublicKey.includes('PUBLIC KEY') || !newPublicKey.includes('END') || !newPublicKey.includes('BEGIN')) {
+      throw new BadRequestException('Invalid public key');
+    }
+    user.publicKey = newPublicKey.trim();
     await this.usersRepository.save(user);
     return user;
   }
