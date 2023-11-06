@@ -9,6 +9,10 @@ import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { PatientController } from './patient/patient.controller';
+import { PatientModule } from './patient/patient.module';
+import { MedicalResultsController } from './medical-results/medical-results.controller';
+import { MedicalResultsModule } from './medical-results/medical-results.module';
 config();
 
 @Module({
@@ -30,7 +34,9 @@ config();
       autoLoadEntities: true, // models will be loaded automatically (you don't have to explicitly specify the entities: [] array)
       synchronize: true, // your entities will be synced with the database (ORM will map entities definitions to corresponding SQL tabled), every time you run the application (recommended: disable in the production)
     }),
-    UsersModule
+    UsersModule,
+    PatientModule,
+    MedicalResultsModule
   ],
   controllers: [AppController],
   providers: [

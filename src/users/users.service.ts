@@ -10,6 +10,7 @@ import * as path from "path";
 import { mapUserToGetUserDto } from './mapper/user.mapper'
 import { GetUserDto } from './dto/get-user.dto'
 import * as zxcvbn from "zxcvbn";
+import { EncryptedDataDto } from './dto/encrypted-data,dto'
 
 dotenv.config()
 
@@ -34,6 +35,20 @@ export class UsersService {
     return iv.toString('hex') + ':' + encrypted;
   }
 
+  decryptSymetricKeyWithPublicKey(publicKey: string, encryptedSymmetricKey: string): Buffer {
+    return crypto.publicDecrypt(publicKey, Buffer.from(encryptedSymmetricKey, 'base64'));
+  }
+
+  decryptDataWithSymmetricKey(data: string, symmetricKey: Buffer): string {
+    const dataParts = data.split(':');
+    const iv = Buffer.from(dataParts.shift()!, 'hex');
+    const encryptedText = Buffer.from(dataParts.join(':'), 'hex');
+    const decipher = crypto.createDecipheriv(this.algorithm, symmetricKey, iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  }
+
   generateKeyPair(): { publicKey: string; privateKey: string } {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
       modulusLength: this.modulusLength,
@@ -51,10 +66,9 @@ export class UsersService {
     return { publicKey: newPublicKey, privateKey: newPrivateKey };
   }
 
-  async cypher (loggInUser: User): Promise<any> {
+  async cypher (loggInUser: User, data: any): Promise<EncryptedDataDto> {
     const publicKey = loggInUser.publicKey
     if (!publicKey) throw new BadRequestException('User has no public key')
-    const users: User[] = await this.usersRepository.find()
     const symmetricKey = crypto.randomBytes(32).toString('hex')
 
     const encryptedSymmetricKey = this.encryptSymmetricKeyWithPublicKey(
@@ -62,19 +76,24 @@ export class UsersService {
       Buffer.from(symmetricKey, 'hex'),
     )
 
-    const encryptedData = users.map(user => {
-      return {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        text: user.text,
-      }
-    })
-
-    const encryptedDataWithSymmetricKey = this.encryptDataWithSymmetricKey(JSON.stringify(encryptedData), Buffer.from(symmetricKey, 'hex'))
+    const encryptedDataWithSymmetricKey = this.encryptDataWithSymmetricKey(JSON.stringify(data), Buffer.from(symmetricKey, 'hex'))
 
     return {
       key: encryptedSymmetricKey,
       data: encryptedDataWithSymmetricKey,
+    }
+  }
+
+  async decypher<T>(loggInUser: User, encryptedData: EncryptedDataDto): Promise<T> {
+    const publicKey = loggInUser.publicKey
+    if (!publicKey) throw new BadRequestException('User has no public key')
+
+    try {
+      const symmetricKey = this.decryptSymetricKeyWithPublicKey(publicKey, encryptedData.key)
+      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData.data, symmetricKey)
+      return JSON.parse(decryptedData)
+    } catch (e) {
+      throw new BadRequestException('Could not decrypt data')
     }
   }
 
@@ -124,7 +143,9 @@ export class UsersService {
       password: user.password,
       text: null,
       publicKey: null,
-      timeout: 0
+      timeout: 0,
+      writtenMedicalResult: null,
+      patients: [],
     })
 
     const savedUser = await this.usersRepository.save(createdUser)

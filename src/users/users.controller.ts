@@ -41,11 +41,11 @@ export class UsersController {
     return await this.authService.login(user);
   }
 
-  @HttpCode(HttpStatus.OK)
-  @Get('encrypted')
-  async cypher(@LoggedInUser() loggedInUser: User): Promise<any> {
-    return await this.usersService.cypher(loggedInUser);
-  }
+  // @HttpCode(HttpStatus.OK)
+  // @Get('encrypted')
+  // async cypher(@LoggedInUser() loggedInUser: User): Promise<any> {
+  //   return await this.usersService.cypher(loggedInUser);
+  // }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)

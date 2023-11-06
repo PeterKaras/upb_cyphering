@@ -1,4 +1,5 @@
-import { IsEmail, IsString, IsNumber } from "@nestjs/class-validator";
+import { IsEmail, IsString, IsNumber, IsArray } from "@nestjs/class-validator";
+import { GetReducedPatientDto } from "src/patient/dto/get-reduced-patient.dto";
 
 
 export class GetUserDto {
@@ -20,4 +21,7 @@ export class GetUserDto {
 
   @IsString()
   readonly publicKey: string;
+
+  @IsArray()
+  readonly patients: GetReducedPatientDto[];
 }

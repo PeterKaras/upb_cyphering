@@ -2,10 +2,14 @@ import {
   BeforeInsert,
   Column,
   Entity,
+  ManyToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Patient } from 'src/patient/entities/patient.entity';
+import { MedicalResults } from 'src/medical-results/entities/medical-results.entity';
 
 @Entity({ name: 'user' })
 export class User {
@@ -33,9 +37,16 @@ export class User {
   @Column({ nullable: true, default: 0 })
   timeout: number;
 
+  @ManyToMany(() => Patient, (patient) => patient.doctors)
+  patients: Patient[];
+
+  @OneToOne(() => MedicalResults, (medicalResult) => medicalResult.doctor, { nullable: true })
+  writtenMedicalResult: MedicalResults;
+
   @BeforeInsert()
   async hashPassword() {
     const salt: string = await bcrypt.genSalt();
     this.password = await bcrypt.hash(this.password, salt);
   }
+
 }
