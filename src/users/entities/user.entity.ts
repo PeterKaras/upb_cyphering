@@ -2,6 +2,7 @@ import {
   BeforeInsert,
   Column,
   Entity,
+  JoinTable,
   ManyToMany,
   OneToOne,
   PrimaryGeneratedColumn,

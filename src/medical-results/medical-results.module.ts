@@ -8,9 +8,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Patient } from 'src/patient/entities/patient.entity';
 import { User } from 'src/users/entities/user.entity';
 import { MedicalResults } from './entities/medical-results.entity';
+import { PatientService } from 'src/patient/patient.service';
+import { UsersService } from 'src/users/users.service';
 
 @Module({
-  providers: [MedicalResultsService, AppService, AuthService],
+  providers: [MedicalResultsService, AppService, AuthService, UsersService, PatientService],
   imports: [
     TypeOrmModule.forFeature([
       User,

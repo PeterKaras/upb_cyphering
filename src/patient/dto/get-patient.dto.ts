@@ -11,7 +11,7 @@ export class GetPatientDto {
   readonly lastName: string;
 
   @IsString()
-  readonly personId: number;
+  readonly birthId: string;
 
   @IsString()
   readonly address: string;

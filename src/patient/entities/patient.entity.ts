@@ -1,6 +1,6 @@
 import { MedicalResults } from "src/medical-results/entities/medical-results.entity";
 import { User } from "src/users/entities/user.entity";
-import { Column, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity({ name: 'patient' })
 export class Patient {
@@ -14,21 +14,22 @@ export class Patient {
   lastName: string;
 
   @Column({unique: true})
-  personId: number;
+  birthId: string;
 
   @Column()
   address: string;
 
   @Column()
-  diagnosis: string[];
+  diagnosis: string;
 
   @Column()
-  allergies: string[];
+  allergies: string;
 
   @OneToMany(() => MedicalResults, (medicalResults) => medicalResults.patient, { eager: true })
   medicalResults: MedicalResults[];
 
   @ManyToMany(() => User, (user) => user.patients)
+  @JoinTable()
   doctors: User[];
 
 }

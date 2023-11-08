@@ -10,10 +10,10 @@ export const mapPatientToGetPatientDto = (patient: Patient): GetPatientDto => {
     return {
         firstName: patient.firstName,
         lastName: patient.lastName,
-        personId: patient.personId,
+        birthId: patient.birthId,
         address: patient.address,
-        diagnosis: patient.diagnosis,
-        allergies: patient.allergies,
+        diagnosis: JSON.parse(patient.diagnosis),
+        allergies: JSON.parse(patient.allergies),
         doctors: patient.doctors.map((doctor: User) => mapUserToGetUserNoPublicDto(doctor)),
         medicalResults: patient.medicalResults.map((result: MedicalResults) => mapMedicalResultToGetMedicalResultDto(result)),
     }
@@ -23,10 +23,10 @@ export const mapPatientToGetReducedPatientDto = (patient: Patient): GetReducedPa
   return {
       firstName: patient.firstName,
       lastName: patient.lastName,
-      personId: patient.personId,
+      birthId: patient.birthId,
       address: patient.address,
-      diagnosis: patient.diagnosis,
-      allergies: patient.allergies,
+      diagnosis: JSON.parse(patient.diagnosis),
+      allergies: JSON.parse(patient.allergies),
       medicalResults: patient.medicalResults.map((result: MedicalResults) => mapMedicalResultToGetMedicalResultDto(result)),
   }
 }

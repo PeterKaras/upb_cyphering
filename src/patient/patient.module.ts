@@ -7,9 +7,10 @@ import { Patient } from './entities/patient.entity';
 import { AuthService } from 'src/auth/auth.service';
 import { AppService } from 'src/app.service';
 import { PatientController } from './patient.controller';
+import { UsersService } from 'src/users/users.service';
 
 @Module({
-  providers: [AppService, PatientService, AuthService],
+  providers: [AppService, PatientService, AuthService, UsersService],
   imports: [
     TypeOrmModule.forFeature([
       User,

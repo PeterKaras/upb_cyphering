@@ -12,7 +12,7 @@ export const mapUserToGetUserDto = (user: User): GetUserDto => {
     email: user.email,
     text: user.text,
     publicKey: user.publicKey,
-    patients: user.patients.map((patient: Patient) => mapPatientToGetReducedPatientDto(patient)),
+    patients: user.patients ? user.patients.map((patient: Patient) => mapPatientToGetReducedPatientDto(patient)) : [],
   }
 }
 

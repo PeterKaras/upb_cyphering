@@ -17,9 +17,8 @@ export class PatientController {
   ) {}
 
   @Post()
-  async createPatient(@Body() createPatientDto: EncryptedDataDto, @LoggedInUser() user: User): Promise<EncryptedDataDto> {
-    const descryptedData: CreatePatientDto = await this.usersService.decypher<CreatePatientDto>(user, createPatientDto);
-    const patient: GetPatientDto = await this.patientsService.createPatient(descryptedData, user);
+  async createPatient(@Body() createPatientDto: CreatePatientDto, @LoggedInUser() user: User): Promise<EncryptedDataDto> {
+    const patient: GetPatientDto = await this.patientsService.createPatient(createPatientDto, user);
     const encryptedPatient: EncryptedDataDto = await this.usersService.cypher(user, patient);
     return encryptedPatient;
   }

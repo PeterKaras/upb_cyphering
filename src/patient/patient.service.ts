@@ -15,19 +15,36 @@ export class PatientService {
   ) {}
 
   async createPatient(createPatientDto: CreatePatientDto, loggedInUser: User): Promise<GetPatientDto> {
-    const existingPatient = await this.patientsRepository.findOne({
+    const existingPatient: Patient = await this.patientsRepository.findOne({
       where: {
-        personId: createPatientDto.personId
+        birthId: createPatientDto.birthId.toString()
       }
     });
     if (existingPatient) throw new BadRequestException('Patient already exists');
 
+    const existingUser: User = await this.usersRepository.findOne({
+      where: {
+        email: loggedInUser.email
+      },
+      relations: ['patients']
+    });
+
+    if (!existingUser) throw new BadRequestException('User does not exist');
+
     const createdPatient: Patient = this.patientsRepository.create({
       ...createPatientDto,
+      allergies: JSON.stringify(createPatientDto.allergies),
+      diagnosis: JSON.stringify(createPatientDto.diagnosis),
       doctors: [loggedInUser],
       medicalResults: []
     });
-    const savedPatient = await this.patientsRepository.save(createdPatient);
+    const savedPatient: Patient = await this.patientsRepository.save(createdPatient);
+
+    await this.usersRepository.save({
+      ...existingUser,
+      patients: [...existingUser.patients, savedPatient]
+    });
+
     return mapPatientToGetPatientDto(savedPatient);
   }
 }

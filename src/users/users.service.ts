@@ -35,19 +35,12 @@ export class UsersService {
     return iv.toString('hex') + ':' + encrypted;
   }
 
-  decryptSymetricKeyWithPublicKey(publicKey: string, encryptedSymmetricKey: string): Buffer {
-    return crypto.publicDecrypt(publicKey, Buffer.from(encryptedSymmetricKey, 'base64'));
-  }
-
-  decryptDataWithSymmetricKey(data: string, symmetricKey: Buffer): string {
-    const dataParts = data.split(':');
-    const iv = Buffer.from(dataParts.shift()!, 'hex');
-    const encryptedText = Buffer.from(dataParts.join(':'), 'hex');
-    const decipher = crypto.createDecipheriv(this.algorithm, symmetricKey, iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
-  }
+  // decryptWithPublicKey(publicKey: string, encryptedData: string): string {
+  //   const buffer = Buffer.from(encryptedData, 'base64');
+  //   const decrypted = crypto.publicDecrypt(publicKey, buffer);
+  //   console.log(decrypted.toString('utf8'));
+  //   return decrypted.toString('utf8');
+  // }
 
   generateKeyPair(): { publicKey: string; privateKey: string } {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
@@ -84,18 +77,20 @@ export class UsersService {
     }
   }
 
-  async decypher<T>(loggInUser: User, encryptedData: EncryptedDataDto): Promise<T> {
-    const publicKey = loggInUser.publicKey
-    if (!publicKey) throw new BadRequestException('User has no public key')
+  // async decypher<T>(loggInUser: User, encryptedData: EncryptedDataDto): Promise<T> {
+  //   const publicKey = loggInUser.publicKey
+  //   if (!publicKey) throw new BadRequestException('User has no public key')
 
-    try {
-      const symmetricKey = this.decryptSymetricKeyWithPublicKey(publicKey, encryptedData.key)
-      const decryptedData = this.decryptDataWithSymmetricKey(encryptedData.data, symmetricKey)
-      return JSON.parse(decryptedData)
-    } catch (e) {
-      throw new BadRequestException('Could not decrypt data')
-    }
-  }
+  //   try {
+  //     console.log(encryptedData.data);
+  //     const decryptedData = this.decryptWithPublicKey(publicKey, encryptedData.data)
+  //     console.log(decryptedData);
+  //     return JSON.parse(decryptedData) as T
+  //   } catch (e) {
+  //     console.log(e);
+  //     throw new BadRequestException('Could not decrypt data')
+  //   }
+  // }
 
   async create (user: CreateUserDto): Promise<GetUserDto | undefined> {
     const passwordRegex =
