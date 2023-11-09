@@ -8,7 +8,13 @@ export class MedicalResults {
   id: number;
 
   @Column()
+  title: string;
+
+  @Column()
   text: string;
+
+  @Column()
+  date: string;
 
   @ManyToOne(() => Patient, (patient) => patient.medicalResults, { eager: false })
   patient: Patient;
