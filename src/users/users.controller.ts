@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { ApiTags } from "@nestjs/swagger";
 import { User } from "./entities/user.entity";
@@ -8,12 +8,16 @@ import { AuthUserDto } from "../auth/dto/auth-user.dto";
 import { AuthService } from "src/auth/auth.service";
 import { LoggInUser } from "src/auth/dto/log-in-user.dto";
 import { Public } from "src/common/decorators/public.decorator";
-import { LoggedInUser } from "src/common/decorators/log-in-user.dto";
 import { mapUserToGetUserDto } from "./mapper/user.mapper";
 import { LocalAuthGuard } from "src/auth/guards/local-auth.guard";
 import { JwtAuthGuard } from "src/auth/guards/jwt-auth.guard";
 import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import { CypherKeyDto } from "./dto/cypherKey.dto";
+import { LoggedInUser } from "../common/decorators/log-in-user.dto";
+import { Patient } from "../patient/entities/patient.entity";
+import { EncryptedDataDto } from "./dto/encrypted-data,dto";
+import { mapPatientToGetReducedPatientDto } from "../patient/mapper/patient.mapper";
+import { GetReducedPatientDto } from "../patient/dto/get-reduced-patient.dto";
 
 @SkipThrottle()
 @ApiTags('users')
@@ -40,12 +44,6 @@ export class UsersController {
   async login(@Body() user: AuthUserDto): Promise<LoggInUser> {
     return await this.authService.login(user);
   }
-
-  // @HttpCode(HttpStatus.OK)
-  // @Get('encrypted')
-  // async cypher(@LoggedInUser() loggedInUser: User): Promise<any> {
-  //   return await this.usersService.cypher(loggedInUser);
-  // }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
@@ -75,5 +73,18 @@ export class UsersController {
       privateKey: keyPair.privateKey,
       publicKey: keyPair.publicKey
     };
+  }
+
+  @Get('patients')
+  @HttpCode(HttpStatus.OK)
+  async getPatients(@LoggedInUser() loggedInUser: User): Promise<EncryptedDataDto | GetReducedPatientDto[]> {
+    const patients: Patient[] = await this.usersService.findAllPatients(loggedInUser);
+    return await this.usersService.cypher(loggedInUser, patients);
+  }
+
+  @Delete('patients/:birthId')
+  @HttpCode(HttpStatus.OK)
+  async deletePatient(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string): Promise<void> {
+    await this.usersService.deleteOnePatient(loggedInUser, patientId);
   }
 }

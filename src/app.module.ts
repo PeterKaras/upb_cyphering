@@ -13,6 +13,7 @@ import { PatientController } from './patient/patient.controller';
 import { PatientModule } from './patient/patient.module';
 import { MedicalResultsController } from './medical-results/medical-results.controller';
 import { MedicalResultsModule } from './medical-results/medical-results.module';
+import { RequestsModule } from './requests/requests.module';
 config();
 
 @Module({
@@ -36,7 +37,8 @@ config();
     }),
     UsersModule,
     PatientModule,
-    MedicalResultsModule
+    MedicalResultsModule,
+    RequestsModule
   ],
   controllers: [AppController],
   providers: [

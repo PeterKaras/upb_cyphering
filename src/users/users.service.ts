@@ -170,4 +170,26 @@ export class UsersService {
     await this.usersRepository.save(user);
     return user;
   }
+
+  async findAllPatients(user: User) {
+    const userDb = await this.usersRepository.findOne({
+      relations: ['patients'],
+      where: { id: user.id },
+    });
+    return userDb.patients;
+  }
+
+  async deleteOnePatient(user: User, birthId: string) {
+    const userDb = await this.usersRepository.findOne({
+      relations: ['patients'],
+      where: { id: user.id },
+    });
+    const patient = userDb.patients.find(patient => patient.birthId === birthId);
+    if (!patient) {
+      throw new BadRequestException('Patient not found');
+    }
+    userDb.patients = userDb.patients.filter(patient => patient.birthId !== birthId);
+    await this.usersRepository.save(userDb);
+    return patient;
+  }
 }
