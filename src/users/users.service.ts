@@ -35,13 +35,6 @@ export class UsersService {
     return iv.toString('hex') + ':' + encrypted;
   }
 
-  // decryptWithPublicKey(publicKey: string, encryptedData: string): string {
-  //   const buffer = Buffer.from(encryptedData, 'base64');
-  //   const decrypted = crypto.publicDecrypt(publicKey, buffer);
-  //   console.log(decrypted.toString('utf8'));
-  //   return decrypted.toString('utf8');
-  // }
-
   generateKeyPair(): { publicKey: string; privateKey: string } {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
       modulusLength: this.modulusLength,
@@ -76,21 +69,6 @@ export class UsersService {
       data: encryptedDataWithSymmetricKey,
     }
   }
-
-  // async decypher<T>(loggInUser: User, encryptedData: EncryptedDataDto): Promise<T> {
-  //   const publicKey = loggInUser.publicKey
-  //   if (!publicKey) throw new BadRequestException('User has no public key')
-
-  //   try {
-  //     console.log(encryptedData.data);
-  //     const decryptedData = this.decryptWithPublicKey(publicKey, encryptedData.data)
-  //     console.log(decryptedData);
-  //     return JSON.parse(decryptedData) as T
-  //   } catch (e) {
-  //     console.log(e);
-  //     throw new BadRequestException('Could not decrypt data')
-  //   }
-  // }
 
   async create (user: CreateUserDto): Promise<GetUserDto | undefined> {
     const passwordRegex =
@@ -172,6 +150,8 @@ export class UsersService {
   }
 
   async findAllPatients(user: User) {
+    const publicKey = user.publicKey;
+    if (!publicKey) throw new BadRequestException('User has no public key');
     const userDb = await this.usersRepository.findOne({
       relations: ['patients'],
       where: { id: user.id },
@@ -180,6 +160,8 @@ export class UsersService {
   }
 
   async deleteOnePatient(user: User, birthId: string) {
+    const publicKey = user.publicKey;
+    if (!publicKey) throw new BadRequestException('User has no public key');
     const userDb = await this.usersRepository.findOne({
       relations: ['patients'],
       where: { id: user.id },
