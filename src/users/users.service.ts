@@ -159,6 +159,20 @@ export class UsersService {
     return userDb.patients;
   }
 
+  async getOnePatientById(user: User, birthId: string) {
+    const publicKey = user.publicKey;
+    if (!publicKey) throw new BadRequestException('User has no public key');
+    const userDb = await this.usersRepository.findOne({
+      relations: ['patients'],
+      where: { id: user.id },
+    });
+    const patient = userDb.patients.find(patient => patient.birthId === birthId);
+    if (!patient) {
+      throw new BadRequestException('Patient not found');
+    }
+    return patient;
+  }
+
   async deleteOnePatient(user: User, birthId: string) {
     const publicKey = user.publicKey;
     if (!publicKey) throw new BadRequestException('User has no public key');

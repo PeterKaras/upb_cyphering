@@ -18,6 +18,7 @@ import { Patient } from "../patient/entities/patient.entity";
 import { EncryptedDataDto } from "./dto/encrypted-data,dto";
 import { mapPatientToGetReducedPatientDto } from "../patient/mapper/patient.mapper";
 import { GetReducedPatientDto } from "../patient/dto/get-reduced-patient.dto";
+import { GetPatientDto } from "src/patient/dto/get-patient.dto";
 
 @SkipThrottle()
 @ApiTags('users')
@@ -80,6 +81,13 @@ export class UsersController {
   async getPatients(@LoggedInUser() loggedInUser: User): Promise<EncryptedDataDto | GetReducedPatientDto[]> {
     const patients: Patient[] = await this.usersService.findAllPatients(loggedInUser);
     return await this.usersService.cypher(loggedInUser, patients);
+  }
+
+  @Get('patients/:birthId')
+  @HttpCode(HttpStatus.OK)
+  async getPatientById(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string): Promise<GetReducedPatientDto> {
+    const patient = await this.usersService.getOnePatientById(loggedInUser, patientId);
+    return mapPatientToGetReducedPatientDto(patient);
   }
 
   @Delete('patients/:birthId')
