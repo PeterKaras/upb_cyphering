@@ -38,12 +38,10 @@ export class User {
   @Column({ nullable: true, default: 0 })
   timeout: number;
 
-  @ManyToMany(() => Patient, (patient) => patient.doctors, {
-    cascade: true, 
-  })
+  @ManyToMany(() => Patient, (patient) => patient.doctors, { cascade: true })
   patients: Patient[];
 
-  @OneToOne(() => MedicalResults, (medicalResult) => medicalResult.doctor, { nullable: true })
+  @OneToOne(() => MedicalResults, (medicalResult) => medicalResult.doctor, { cascade: true, nullable: true })
   writtenMedicalResult: MedicalResults;
 
   @BeforeInsert()

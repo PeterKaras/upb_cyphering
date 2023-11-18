@@ -14,5 +14,8 @@ export class GetMedicalResultsDto {
     readonly doctor: GetUserNoPublicDto;
 
     @IsString()
+    readonly title: string;
+
+    @IsString()
     readonly text: string;
 }

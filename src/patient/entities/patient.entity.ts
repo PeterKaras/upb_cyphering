@@ -25,7 +25,7 @@ export class Patient {
   @Column()
   allergies: string;
 
-  @OneToMany(() => MedicalResults, (medicalResults) => medicalResults.patient, { eager: true })
+  @OneToMany(() => MedicalResults, (medicalResults) => medicalResults.patient, { cascade: true, eager: true })
   medicalResults: MedicalResults[];
 
   @ManyToMany(() => User, (user) => user.patients)

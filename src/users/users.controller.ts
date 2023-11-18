@@ -90,15 +90,6 @@ export class UsersController {
     return mapPatientToGetReducedPatientDto(patient);
   }
 
-  @Put('patients/:birthId')
-  @HttpCode(HttpStatus.OK)
-  async updatePatientById(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string, @Body() updatePatientDto: GetReducedPatientDto
-  ): Promise<GetReducedPatientDto> {
-    console.log(updatePatientDto)
-    const updatedPatient = await this.usersService.updatePatientById(loggedInUser, patientId, updatePatientDto);
-    return mapPatientToGetReducedPatientDto(updatedPatient);
-  }
-
   @Delete('patients/:birthId')
   @HttpCode(HttpStatus.OK)
   async deletePatient(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string): Promise<void> {
