@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards, Put } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { ApiTags } from "@nestjs/swagger";
 import { User } from "./entities/user.entity";
@@ -88,6 +88,14 @@ export class UsersController {
   async getPatientById(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string): Promise<GetReducedPatientDto> {
     const patient = await this.usersService.getOnePatientById(loggedInUser, patientId);
     return mapPatientToGetReducedPatientDto(patient);
+  }
+
+  @Put('patients/:birthId')
+  @HttpCode(HttpStatus.OK)
+  async updatePatientById(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string, @Body() updatePatientDto: GetReducedPatientDto
+  ): Promise<GetReducedPatientDto> {
+    const updatedPatient = await this.usersService.updatePatientById(loggedInUser, patientId, updatePatientDto);
+    return mapPatientToGetReducedPatientDto(updatedPatient);
   }
 
   @Delete('patients/:birthId')

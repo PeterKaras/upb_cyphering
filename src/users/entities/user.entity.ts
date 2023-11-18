@@ -38,7 +38,9 @@ export class User {
   @Column({ nullable: true, default: 0 })
   timeout: number;
 
-  @ManyToMany(() => Patient, (patient) => patient.doctors)
+  @ManyToMany(() => Patient, (patient) => patient.doctors, {
+    cascade: true, 
+  })
   patients: Patient[];
 
   @OneToOne(() => MedicalResults, (medicalResult) => medicalResult.doctor, { nullable: true })

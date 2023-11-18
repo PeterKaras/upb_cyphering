@@ -11,6 +11,7 @@ import { mapUserToGetUserDto } from './mapper/user.mapper'
 import { GetUserDto } from './dto/get-user.dto'
 import * as zxcvbn from "zxcvbn";
 import { EncryptedDataDto } from './dto/encrypted-data,dto'
+import { GetReducedPatientDto } from 'src/patient/dto/get-reduced-patient.dto'
 
 dotenv.config()
 
@@ -171,6 +172,33 @@ export class UsersService {
       throw new BadRequestException('Patient not found');
     }
     return patient;
+  }
+
+  async updatePatientById(user: User, birthId: string, updatePatientDto: GetReducedPatientDto) {
+    const publicKey = user.publicKey;
+    if (!publicKey) throw new BadRequestException('User has no public key');
+
+    const userDb = await this.usersRepository.findOne({
+      relations: ['patients'],
+      where: { id: user.id },
+    });
+
+    if (!userDb) throw new BadRequestException('User not found');
+    const patientIndex = userDb.patients.findIndex(patient => patient.birthId === birthId);
+    if (patientIndex === -1) {
+      throw new BadRequestException('Patient not found');
+    }
+
+    const patient = userDb.patients[patientIndex];
+    patient.firstName = updatePatientDto.firstName ?? patient.firstName;
+    patient.lastName = updatePatientDto.lastName ?? patient.lastName;
+    patient.address = updatePatientDto.address ?? patient.address;
+    patient.diagnosis = updatePatientDto.diagnosis ? JSON.stringify(updatePatientDto.diagnosis) : patient.diagnosis;
+    patient.allergies = updatePatientDto.allergies ? JSON.stringify(updatePatientDto.allergies) : patient.allergies;
+    // medical record...
+
+    await this.usersRepository.save(userDb);
+    return userDb.patients[patientIndex]
   }
 
   async deleteOnePatient(user: User, birthId: string) {
