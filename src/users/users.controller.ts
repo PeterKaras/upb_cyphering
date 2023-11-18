@@ -94,6 +94,7 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   async updatePatientById(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string, @Body() updatePatientDto: GetReducedPatientDto
   ): Promise<GetReducedPatientDto> {
+    console.log(updatePatientDto)
     const updatedPatient = await this.usersService.updatePatientById(loggedInUser, patientId, updatePatientDto);
     return mapPatientToGetReducedPatientDto(updatedPatient);
   }
