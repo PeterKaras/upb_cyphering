@@ -47,7 +47,7 @@ export class PatientController {
 
   @Get('generatePdf/:birthId')
   async getPatientById(@Param('birthId') birthId: string, @LoggedInUser() user: User, @Res() res: Response): Promise<any> {
-    const pdf = await this.patientsService.generatePdf(birthId);
+    const pdf = await this.patientsService.generatePdf(birthId, user);
     const encryptedPdf = await this.usersService.cypher(user, pdf);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=example.pdf');

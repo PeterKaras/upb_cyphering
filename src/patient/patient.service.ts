@@ -138,7 +138,9 @@ export class PatientService {
     return filtered.map((medical) => mapMedicalResultToGetMedicalResultDto(medical));
   }
 
-  async generatePdf(birthId: string): Promise<any> {
+  async generatePdf(birthId: string, user: User): Promise<any> {
+    const publicKey = user.publicKey;
+    if (!publicKey) throw new BadRequestException('User has no public key');
     const patient: Patient = await this.patientsRepository.findOne({
       where: {
         birthId: birthId,
