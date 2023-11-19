@@ -100,10 +100,22 @@ export class PatientService {
       where: {
         birthId: updateMedicalResultDto.birthId,
       },
-      relations: ['doctors'],
     });
-  
+
     if (!patient) throw new BadRequestException('Patient not found');
+
+    const medicalResults = await this.medicalResultsRepository.find({
+      where: {
+        birthId: updateMedicalResultDto.birthId,
+      }
+    });
+
+    await Promise.all(medicalResults.map(async (medicalResult: any) => {
+      const found = updateMedicalResultDto.medicalResults.find((result: any) => result.id === medicalResult.id);
+      if (!found) {
+        await this.medicalResultsRepository.delete(medicalResult.id);
+      }
+    }));
   
     await Promise.all(updateMedicalResultDto.medicalResults.map(async (medicalResult: any) => {
       if (!medicalResult.id) {
