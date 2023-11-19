@@ -7,7 +7,6 @@ export async function initializeDatabase(app: any) {
   const existingData = [];
   const filePath = path.join(__dirname, '../../output.json');
 
-  console.log("CREATE JSON FILE TO ENCRYPT/DECRYPT");
   for (let i = 0; i < 10; i++) {
     const data = {
       firstName: `firstName${i}`,

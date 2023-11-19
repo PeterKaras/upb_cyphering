@@ -10,6 +10,7 @@ import { User } from 'src/users/entities/user.entity';
 import { MedicalResults } from './entities/medical-results.entity';
 import { PatientService } from 'src/patient/patient.service';
 import { UsersService } from 'src/users/users.service';
+import { RequestEntity } from 'src/requests/entities/request.entity';
 
 @Module({
   providers: [MedicalResultsService, AppService, AuthService, UsersService, PatientService],
@@ -17,7 +18,8 @@ import { UsersService } from 'src/users/users.service';
     TypeOrmModule.forFeature([
       User,
       Patient,
-      MedicalResults
+      MedicalResults,
+      RequestEntity
     ]),
     JwtModule.register({ secret: process.env.JWT_SECRET }),
   ],

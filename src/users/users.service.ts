@@ -12,6 +12,8 @@ import { GetUserDto } from './dto/get-user.dto'
 import * as zxcvbn from "zxcvbn";
 import { EncryptedDataDto } from './dto/encrypted-data,dto'
 import { GetReducedPatientDto } from 'src/patient/dto/get-reduced-patient.dto'
+import { Patient } from 'src/patient/entities/patient.entity'
+import { RequestEntity } from 'src/requests/entities/request.entity'
 
 dotenv.config()
 
@@ -19,6 +21,7 @@ dotenv.config()
 export class UsersService {
   constructor (
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
+    @InjectRepository(Patient) private readonly patientRepository: Repository<Patient>
   ) {}
 
   private readonly modulusLength = 2048;
@@ -88,7 +91,7 @@ export class UsersService {
       throw new BadRequestException('Could not create user with specified data');
     }
 
-    if (passwordStrength.score < 2.5) {
+    if (passwordStrength.score < 2) {
       // Password is weak; score 0 to 2 means weak, and 3 to 4 means strong
       throw new BadRequestException('Password is too weak, please choose a stronger one.');
     }
@@ -118,7 +121,6 @@ export class UsersService {
       text: null,
       publicKey: null,
       timeout: 0,
-      writtenMedicalResult: null,
       patients: [],
     })
 
@@ -163,15 +165,13 @@ export class UsersService {
   async getOnePatientById(user: User, birthId: string) {
     const publicKey = user.publicKey;
     if (!publicKey) throw new BadRequestException('User has no public key');
-    const userDb = await this.usersRepository.findOne({
-      relations: ['patients'],
-      where: { id: user.id },
+    const patientDb = await this.patientRepository.findOne({
+      where: { birthId: birthId },
     });
-    const patient = userDb.patients.find(patient => patient.birthId === birthId);
-    if (!patient) {
+    if (!patientDb) {
       throw new BadRequestException('Patient not found');
     }
-    return patient;
+    return patientDb;
   }
 
   async deleteOnePatient(user: User, birthId: string) {

@@ -15,7 +15,7 @@ export const mapPatientToGetPatientDto = (patient: Patient): GetPatientDto => {
         diagnosis: JSON.parse(patient.diagnosis),
         allergies: JSON.parse(patient.allergies),
         doctors: patient.doctors.map((doctor: User) => mapUserToGetUserNoPublicDto(doctor)),
-        medicalResults: patient.medicalResults.map((result: MedicalResults) => mapMedicalResultToGetMedicalResultDto(result)),
+        medicalResults: [],
     }
 }
 
@@ -27,6 +27,6 @@ export const mapPatientToGetReducedPatientDto = (patient: Patient): GetReducedPa
       address: patient.address,
       diagnosis: JSON.parse(patient.diagnosis),
       allergies: JSON.parse(patient.allergies),
-      medicalResults: patient.medicalResults.map((result: MedicalResults) => mapMedicalResultToGetMedicalResultDto(result)),
+      medicalResults: [],
   }
 }

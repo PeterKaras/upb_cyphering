@@ -7,14 +7,14 @@ export class GetMedicalResultsDto {
     @IsNumber()
     readonly id: number;
 
-    @IsObject()
-    readonly patient: GetReducedPatientDto;
-
-    @IsObject()
-    readonly doctor: GetUserNoPublicDto;
+    @IsString()
+    readonly birthId: string;
 
     @IsString()
     readonly title: string;
+
+    @IsString()
+    readonly date: string;
 
     @IsString()
     readonly text: string;

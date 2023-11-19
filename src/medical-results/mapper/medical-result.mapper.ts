@@ -7,8 +7,8 @@ export const mapMedicalResultToGetMedicalResultDto = (medicalResult: MedicalResu
     return {
         id: medicalResult.id,
         title: medicalResult.title,
-        patient: mapPatientToGetReducedPatientDto(medicalResult.patient),
-        doctor: mapUserToGetUserNoPublicDto(medicalResult.doctor),
         text: medicalResult.text,
+        date: medicalResult.date,
+        birthId: medicalResult.birthId,
     }
 }

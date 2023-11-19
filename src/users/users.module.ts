@@ -7,6 +7,8 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './entities/user.entity';
 import { AuthService } from 'src/auth/auth.service';
+import { Patient } from 'src/patient/entities/patient.entity';
+import { RequestEntity } from 'src/requests/entities/request.entity';
 config();
 
 @Module({
@@ -14,6 +16,8 @@ config();
   imports: [
     TypeOrmModule.forFeature([
       User,
+      Patient,
+      RequestEntity
     ]),
     JwtModule.register({ secret: process.env.JWT_SECRET }),
   ],

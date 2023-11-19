@@ -85,9 +85,9 @@ export class UsersController {
 
   @Get('patients/:birthId')
   @HttpCode(HttpStatus.OK)
-  async getPatientById(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string): Promise<GetReducedPatientDto> {
+  async getPatientById(@LoggedInUser() loggedInUser: User, @Param('birthId') patientId: string): Promise<EncryptedDataDto> {
     const patient = await this.usersService.getOnePatientById(loggedInUser, patientId);
-    return mapPatientToGetReducedPatientDto(patient);
+    return await this.usersService.cypher(loggedInUser, patient);
   }
 
   @Delete('patients/:birthId')

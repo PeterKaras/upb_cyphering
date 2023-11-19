@@ -41,9 +41,6 @@ export class User {
   @ManyToMany(() => Patient, (patient) => patient.doctors, { cascade: true })
   patients: Patient[];
 
-  @OneToOne(() => MedicalResults, (medicalResult) => medicalResult.doctor, { cascade: true, nullable: true })
-  writtenMedicalResult: MedicalResults;
-
   @BeforeInsert()
   async hashPassword() {
     const salt: string = await bcrypt.genSalt();

@@ -8,6 +8,13 @@ import { mapPatientToGetPatientDto } from './mapper/patient.mapper';
 import { GetPatientDto } from './dto/get-patient.dto';
 import { GetReducedPatientDto } from './dto/get-reduced-patient.dto';
 import { MedicalResults } from 'src/medical-results/entities/medical-results.entity';
+import { Update } from '@reduxjs/toolkit';
+import { UpdatePatientDto } from './dto/update-patient.dto';
+import { GetMedicalResultsDto } from 'src/medical-results/dto/get-medical-results.dto';
+import { mapMedicalResultToGetMedicalResultDto } from 'src/medical-results/mapper/medical-result.mapper';
+import { RequestEntity } from 'src/requests/entities/request.entity';
+import * as PDFDocument from 'pdfkit';
+import * as blobStream from 'blob-stream';
 
 @Injectable()
 export class PatientService {
@@ -15,6 +22,7 @@ export class PatientService {
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
     @InjectRepository(Patient) private readonly patientsRepository: Repository<Patient>,
     @InjectRepository(MedicalResults) private readonly medicalResultsRepository: Repository<MedicalResults>,
+    @InjectRepository(RequestEntity) private readonly requestRepository: Repository<RequestEntity>,
   ) {}
 
   async createPatient(createPatientDto: CreatePatientDto, loggedInUser: User): Promise<GetPatientDto> {
@@ -39,7 +47,6 @@ export class PatientService {
       allergies: JSON.stringify(createPatientDto.allergies),
       diagnosis: JSON.stringify(createPatientDto.diagnosis),
       doctors: [loggedInUser],
-      medicalResults: []
     });
     const savedPatient: Patient = await this.patientsRepository.save(createdPatient);
 
@@ -50,121 +57,115 @@ export class PatientService {
 
     return mapPatientToGetPatientDto(savedPatient);
   }
-/*
-  async updatePatientById(loggedInUser: User, birthId: string, updatePatientDto: GetReducedPatientDto) {
+
+  async updatePatientById(loggedInUser: User, updatePatientDto: UpdatePatientDto): Promise<undefined> {
     const publicKey = loggedInUser.publicKey;
     if (!publicKey) throw new BadRequestException('User has no public key');
-
+  
     const userDb = await this.usersRepository.findOne({
       relations: ['patients'],
       where: { id: loggedInUser.id },
     });
-
+  
     if (!userDb) throw new BadRequestException('User not found');
-
+  
     const patient: Patient = await this.patientsRepository.findOne({
       where: {
-        birthId: birthId.toString()
-      }
+        birthId: updatePatientDto.birthId,
+      },
+      relations: ['doctors'],
     });
+  
     if (!patient) throw new BadRequestException('Patient not found');
-    
-    patient.firstName = updatePatientDto.firstName ?? patient.firstName;
-    patient.lastName = updatePatientDto.lastName ?? patient.lastName;
-    patient.address = updatePatientDto.address ?? patient.address;
-    patient.diagnosis = updatePatientDto.diagnosis ? JSON.stringify(updatePatientDto.diagnosis) : patient.diagnosis;
-    patient.allergies = updatePatientDto.allergies ? JSON.stringify(updatePatientDto.allergies) : patient.allergies;
-    // medical record...
-    
-    for (const resultDto of updatePatientDto.medicalResults) {
-      let resultEntity: MedicalResults;
-      if (resultDto.id) {
-        resultEntity = await this.medicalResultsRepository.findOne({
-          where: {
-            id: resultDto.id          }
-        });
-        if (!resultEntity) {
-          throw new BadRequestException('Medical Result not found');
-        }
-      } else {
-        /*resultEntity = this.medicalResultsRepository.create();
-        resultEntity.date = new Date().toISOString(); 
-        resultEntity.patient = patient;
-        resultEntity.doctor = loggedInUser; 
-        resultEntity = this.medicalResultsRepository.create({
-          date: new Date().toISOString(),
-          patient: patient,
-          doctor: loggedInUser
-        });
-      }
-      resultEntity.title = resultDto.title ?? resultEntity.title;
-      resultEntity.text = resultDto.text ?? resultEntity.text;
-      await this.medicalResultsRepository.save(resultEntity);
-    }
-    await this.usersRepository.save({
-      ...patient,
-      medicalResults: [...patient.medicalResults, resultEntity]
-    })
-
-    await this.usersRepository.save(patient);
-    await this.usersRepository.save(userDb);
-    return patient;
-  }*/
-
-  async updatePatientById(loggedInUser: User, birthId: string, updatePatientDto: GetReducedPatientDto) {
+  
+    const savedPatient = await this.patientsRepository.save({
+      ...updatePatientDto,
+      diagnosis: JSON.stringify(updatePatientDto.diagnosis),
+      allergies: JSON.stringify(updatePatientDto.allergies),
+    });
+  
+    return undefined;
+  }
+  
+  async createMedical(loggedInUser: User, updateMedicalResultDto: any): Promise<undefined> {
     const publicKey = loggedInUser.publicKey;
     if (!publicKey) throw new BadRequestException('User has no public key');
-
+  
     const userDb = await this.usersRepository.findOne({
       relations: ['patients'],
       where: { id: loggedInUser.id },
     });
-
+  
     if (!userDb) throw new BadRequestException('User not found');
-    const patientIndex = userDb.patients.findIndex(patient => patient.birthId === birthId);
-    if (patientIndex === -1) {
-      throw new BadRequestException('Patient not found');
-    }
-
-    const patient = userDb.patients[patientIndex];
-    patient.firstName = updatePatientDto.firstName ?? patient.firstName;
-    patient.lastName = updatePatientDto.lastName ?? patient.lastName;
-    patient.address = updatePatientDto.address ?? patient.address;
-    patient.diagnosis = updatePatientDto.diagnosis ? JSON.stringify(updatePatientDto.diagnosis) : patient.diagnosis;
-    patient.allergies = updatePatientDto.allergies ? JSON.stringify(updatePatientDto.allergies) : patient.allergies;
-    // medical record...
-
-    for (const resultDto of updatePatientDto.medicalResults) {
-      let resultEntity: MedicalResults;
-      console.log(resultDto)
-      if (resultDto.id) {
-        resultEntity = await this.medicalResultsRepository.findOne({
-          where: {
-            id: resultDto.id          }
+  
+    const patient: Patient = await this.patientsRepository.findOne({
+      where: {
+        birthId: updateMedicalResultDto.birthId,
+      },
+      relations: ['doctors'],
+    });
+  
+    if (!patient) throw new BadRequestException('Patient not found');
+  
+    await Promise.all(updateMedicalResultDto.medicalResults.map(async (medicalResult: any) => {
+      if (!medicalResult.id) {
+        const created: MedicalResults = this.medicalResultsRepository.create({
+          title: medicalResult.title,
+          text: medicalResult.text,
+          date: medicalResult.date,
+          birthId: updateMedicalResultDto.birthId,
         });
-        if (!resultEntity) {
-          throw new BadRequestException('Medical Result not found');
-        }
-      } else {
-        resultEntity = this.medicalResultsRepository.create({
-          date: new Date().toISOString(),
-          patient: patient,
-          doctor: loggedInUser
-        });
+  
+        await this.medicalResultsRepository.save(created);
       }
-      resultEntity.title = resultDto.title ?? resultEntity.title;
-      resultEntity.text = resultDto.text ?? resultEntity.text;
-      
-      // Causes an error
-      //await this.medicalResultsRepository.save(resultEntity);
+    }));
+    return undefined;
+  }
 
-      /*await this.usersRepository.save({
-      ...patient,
-      medicalResults: [...patient.medicalResults, resultEntity]
-      })*/
+  async getMedicalResults(birthId: string): Promise<GetMedicalResultsDto[]> {
+    const medicals: MedicalResults[] = await this.medicalResultsRepository.find();
+    const filtered = medicals.filter((medical: MedicalResults) => medical.birthId === birthId);
+    return filtered.map((medical) => mapMedicalResultToGetMedicalResultDto(medical));
+  }
+
+  async generatePdf(birthId: string): Promise<any> {
+    const patient: Patient = await this.patientsRepository.findOne({
+      where: {
+        birthId: birthId,
+      }
+    });
+    const requests = await this.requestRepository.find();
+    const filteredRequests = requests.filter((request: RequestEntity) => request.birthId === birthId);
+    const medicals: MedicalResults[] = await this.medicalResultsRepository.find();
+    const filtered = medicals.filter((medical: MedicalResults) => medical.birthId === birthId);
+    const pdfDoc = new PDFDocument();
+    const chunks: Buffer[] = [];
+
+    const data = {
+      birthId: patient.birthId,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      diagnosis: patient.diagnosis,
+      allergies: patient.allergies,
+      doctors: patient.doctors,
+      medicals: filtered,
+      threatmentRequests: filteredRequests,
     }
-    //await this.usersRepository.save(patient);
-    await this.usersRepository.save(userDb);
-    return userDb.patients[patientIndex]
+    pdfDoc.text(JSON.stringify(data, null, 2));
+
+    // Collect chunks of the PDF
+    pdfDoc.on('data', (chunk) => {
+      chunks.push(chunk);
+    });
+
+    // End the PDF and resolve with the buffer
+    return new Promise<Buffer>((resolve) => {
+      pdfDoc.on('end', () => {
+        const pdfBuffer = Buffer.concat(chunks);
+        resolve(pdfBuffer);
+      });
+
+      pdfDoc.end();
+    });
   }
 }

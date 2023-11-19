@@ -16,10 +16,6 @@ export class MedicalResults {
   @Column()
   date: string;
 
-  @ManyToOne(() => Patient, (patient) => patient.medicalResults, { eager: false })
-  patient: Patient;
-
-  @OneToOne(() => User, (user) => user.writtenMedicalResult, { eager: false })
-  doctor: User;
-
+  @Column()
+  birthId: string;
 }
