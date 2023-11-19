@@ -152,14 +152,11 @@ export class UsersService {
     return user;
   }
 
-  async findAllPatients(user: User) {
+  async findAllPatients(user: User): Promise<Patient[]> {
     const publicKey = user.publicKey;
     if (!publicKey) throw new BadRequestException('User has no public key');
-    const userDb = await this.usersRepository.findOne({
-      relations: ['patients'],
-      where: { id: user.id },
-    });
-    return userDb.patients;
+    const patients: Patient[] = await this.patientRepository.find();
+    return patients;
   }
 
   async getOnePatientById(user: User, birthId: string) {

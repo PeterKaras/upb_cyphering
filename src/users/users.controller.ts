@@ -78,7 +78,7 @@ export class UsersController {
 
   @Get('patients')
   @HttpCode(HttpStatus.OK)
-  async getPatients(@LoggedInUser() loggedInUser: User): Promise<EncryptedDataDto | GetReducedPatientDto[]> {
+  async getPatients(@LoggedInUser() loggedInUser: User): Promise<EncryptedDataDto> {
     const patients: Patient[] = await this.usersService.findAllPatients(loggedInUser);
     return await this.usersService.cypher(loggedInUser, patients);
   }

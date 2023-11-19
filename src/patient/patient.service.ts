@@ -166,6 +166,9 @@ export class PatientService {
     const column2Start = 250;
     const column3Start = 450;
 
+    const maxWidthColumn1 = column2Start - column1Start - 20; 
+    const maxWidthColumn2 = column3Start - column2Start - 20;
+
     pdfDoc.fontSize(25).font('Helvetica-Bold').text('Patient Report', {
       align: 'center'
     });
@@ -175,41 +178,42 @@ export class PatientService {
     pdfDoc.moveDown(2);
 
     pdfDoc.fontSize(10).font('Helvetica');
-    pdfDoc.text(`Birth ID: ${data.birthId}`, column1Start);
-    pdfDoc.moveUp(1);
-    pdfDoc.text(`First Name: ${data.firstName}`, column2Start);
-    pdfDoc.moveUp(1);
-    pdfDoc.text(`Last Name: ${data.lastName}`, column3Start);
-    
-    pdfDoc.moveDown(2);
 
     let savedY = pdfDoc.y;
+    pdfDoc.text(`First Name: ${data.firstName}`, column1Start, pdfDoc.y, { width: maxWidthColumn1 });
+    pdfDoc.moveUp(1);
+    pdfDoc.text(`Last Name: ${data.lastName}`, column2Start, pdfDoc.y, { width: maxWidthColumn2 });
+    pdfDoc.moveUp(1);
+    pdfDoc.text(`Birth ID: ${data.birthId}`, column3Start, pdfDoc.y);
+    pdfDoc.moveDown(2);
+
+    savedY = pdfDoc.y;
     pdfDoc.text('Diagnosis:', column1Start);
     data.diagnosis.forEach(diagnosis => {
       pdfDoc.moveDown(0.5); 
-      pdfDoc.text(`- ${diagnosis.trim()}`, column1Start + 10); 
+      pdfDoc.text(`- ${diagnosis.trim()}`, column1Start + 10, pdfDoc.y, { width: maxWidthColumn1 }); 
     });
+    let firstRowY = pdfDoc.y;
 
     pdfDoc.text('Allergies:', column2Start, savedY);
     data.allergies.forEach(allergy => {
       pdfDoc.moveDown(0.5); 
-      pdfDoc.text(`- ${allergy.trim()}`, column2Start + 10); 
+      pdfDoc.text(`- ${allergy.trim()}`, column2Start + 10, pdfDoc.y, { width: maxWidthColumn2 }); 
     });
-    pdfDoc.moveDown(3)
-
-    savedY = pdfDoc.y;
-    pdfDoc.text('Medicals:', column1Start);
+    
+    savedY = Math.max(firstRowY, pdfDoc.y) + 20;
+    pdfDoc.text('Medicals:', column1Start, savedY);
     data.medicals.forEach((medical, index) => {
       if (index !== 0) { 
         pdfDoc.moveTo(column1Start, pdfDoc.y) 
                .lineTo(column1Start + 170, pdfDoc.y) 
                .stroke();
       }      pdfDoc.moveDown(1);
-      pdfDoc.text(`Title: ${medical.title}`, column1Start);
+      pdfDoc.text(`Title: ${medical.title}`, column1Start, pdfDoc.y, { width: maxWidthColumn1 });
       pdfDoc.moveDown(0.5);
-      pdfDoc.text(`Text: ${medical.text}`, column1Start);
+      pdfDoc.text(`Text: ${medical.text}`, column1Start, pdfDoc.y, { width: maxWidthColumn1 });
       pdfDoc.moveDown(0.5);
-      pdfDoc.text(`Date: ${new Date(medical.date).toLocaleDateString()}`, column1Start);
+      pdfDoc.text(`Date: ${new Date(medical.date).toLocaleDateString("sk-SK")}`, column1Start, pdfDoc.y, { width: maxWidthColumn1 });
       pdfDoc.moveDown(0.5);
     });
     pdfDoc.moveUp(1)
@@ -222,11 +226,11 @@ export class PatientService {
               .stroke();
       }
       pdfDoc.moveDown(1);
-      pdfDoc.text(`Reason: ${request.reason}`, column2Start);
+      pdfDoc.text(`Reason: ${request.reason}`, column2Start, pdfDoc.y, { width: maxWidthColumn2 });
       pdfDoc.moveDown(0.5);
-      pdfDoc.text(`Notes: ${request.notes}`, column2Start);
+      pdfDoc.text(`Notes: ${request.notes}`, column2Start, pdfDoc.y, { width: maxWidthColumn2 });
       pdfDoc.moveDown(0.5);
-      pdfDoc.text(`Date: ${new Date(request.date).toLocaleDateString()}`, column2Start);
+      pdfDoc.text(`Date: ${new Date(request.date).toLocaleDateString()}`, column2Start, pdfDoc.y, { width: maxWidthColumn2 });
       pdfDoc.moveDown(0.5);
       pdfDoc.text(`Status: ${request.status}`, column2Start);
       pdfDoc.moveDown(0.5);
