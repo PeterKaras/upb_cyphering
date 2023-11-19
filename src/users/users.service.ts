@@ -92,7 +92,6 @@ export class UsersService {
     }
 
     if (passwordStrength.score < 2) {
-      // Password is weak; score 0 to 2 means weak, and 3 to 4 means strong
       throw new BadRequestException('Password is too weak, please choose a stronger one.');
     }
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { User } from "../users/entities/user.entity";
 import { Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -17,11 +17,11 @@ export class RequestsService {
 
   async create(createRequestDto: CreateRequestDto, loggedInUser: User): Promise<void> {
     if (createRequestDto.notes.length === 0) {
-      throw new Error('Notes cannot be empty');
+      throw new BadRequestException('Notes cannot be empty');
     }
 
     if (createRequestDto.reason.length === 0) {
-      throw new Error('Reason cannot be empty');
+      throw new BadRequestException('Reason cannot be empty');
     }
 
     const request = this.requestRepository.create({

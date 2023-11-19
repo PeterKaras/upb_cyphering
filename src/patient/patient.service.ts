@@ -144,6 +144,7 @@ export class PatientService {
         birthId: birthId,
       }
     });
+    if (!patient) throw new BadRequestException('Patient not found');
     const requests = await this.requestRepository.find();
     const filteredRequests = requests.filter((request: RequestEntity) => request.birthId === birthId);
     const medicals: MedicalResults[] = await this.medicalResultsRepository.find();
@@ -236,11 +237,10 @@ export class PatientService {
       pdfDoc.moveDown(0.5);
     });
 
-    // Collect chunks of the PDF
     pdfDoc.on('data', (chunk) => {
       chunks.push(chunk);
     });
-    // End the PDF and resolve with the buffer
+
     return new Promise<Buffer>((resolve) => {
       pdfDoc.on('end', () => {
         const pdfBuffer = Buffer.concat(chunks);
