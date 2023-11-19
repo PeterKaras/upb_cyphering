@@ -170,19 +170,26 @@ export class UsersService {
     return patientDb;
   }
 
-  async deleteOnePatient(user: User, birthId: string) {
+  async deleteOnePatient(user: User, birthId: string): Promise<void> {
     const publicKey = user.publicKey;
     if (!publicKey) throw new BadRequestException('User has no public key');
-    const userDb = await this.usersRepository.findOne({
-      relations: ['patients'],
-      where: { id: user.id },
+    const patientDb = await this.patientRepository.findOne({
+      where: { birthId: birthId },
     });
-    const patient = userDb.patients.find(patient => patient.birthId === birthId);
-    if (!patient) {
+    if (!patientDb) {
       throw new BadRequestException('Patient not found');
     }
-    userDb.patients = userDb.patients.filter(patient => patient.birthId !== birthId);
-    await this.usersRepository.save(userDb);
-    return patient;
+
+    const users = await this.usersRepository.findOne({
+      where: { id: user.id },
+      relations: ['patients'],
+    });
+    if (!users) {
+      throw new BadRequestException('Doctor not found');
+    }
+
+    users.patients = users.patients.filter(patient => patient.birthId !== patientDb.birthId);
+    await this.usersRepository.save(users);
+    await this.patientRepository.delete(patientDb.id);
   }
 }
