@@ -171,19 +171,21 @@ export class PatientService {
     
     pdfDoc.moveDown(2);
 
+    let savedY = pdfDoc.y;
     pdfDoc.text('Diagnosis:', column1Start);
     data.diagnosis.forEach(diagnosis => {
       pdfDoc.moveDown(0.5); 
       pdfDoc.text(`- ${diagnosis.trim()}`, column1Start + 10); 
     });
 
-    pdfDoc.text('Allergies:', column2Start, 210);
+    pdfDoc.text('Allergies:', column2Start, savedY);
     data.allergies.forEach(allergy => {
       pdfDoc.moveDown(0.5); 
       pdfDoc.text(`- ${allergy.trim()}`, column2Start + 10); 
     });
     pdfDoc.moveDown(3)
 
+    savedY = pdfDoc.y;
     pdfDoc.text('Medicals:', column1Start);
     data.medicals.forEach((medical, index) => {
       if (index !== 0) { 
@@ -200,7 +202,7 @@ export class PatientService {
     });
     pdfDoc.moveUp(1)
 
-    pdfDoc.text('Treatment Requests:', column2Start, 290); 
+    pdfDoc.text('Treatment Requests:', column2Start, savedY); 
     data.treatmentRequests.forEach((request, index) => {
       if (index !== 0) { 
               pdfDoc.moveTo(column2Start, pdfDoc.y)
