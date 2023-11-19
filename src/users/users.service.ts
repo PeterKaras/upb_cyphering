@@ -76,7 +76,7 @@ export class UsersService {
 
   async create (user: CreateUserDto): Promise<GetUserDto | undefined> {
     const passwordRegex =
-      /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{6,}$/
     const passwordStrength = zxcvbn(user.password);
     const data = fs.readFileSync(
       path.join(__dirname, '..', '..', '10-million-password-list-top-100000.txt'),
